@@ -1,0 +1,142 @@
+package sqlc
+
+import (
+	"context"
+	"database/sql"
+	"time"
+
+	"github.com/teamgram/marmota/pkg/stores/sqlx"
+
+	"github.com/zeromicro/go-zero/core/stores/cache"
+	"github.com/zeromicro/go-zero/core/stores/redis"
+	"github.com/zeromicro/go-zero/core/syncx"
+)
+
+// see doc/sql-cache.md
+const cacheSafeGapBetweenIndexAndPrimary = time.Second * 5
+
+var (
+	// ErrNotFound is an alias of sqlx.ErrNotFound.
+	ErrNotFound = sqlx.ErrNoRows
+
+	// can't use one SharedCalls per conn, because multiple conns may share the same cache key.
+	exclusiveCalls = syncx.NewSingleFlight()
+	stats          = cache.NewStat("sqlc")
+)
+
+type (
+	// ExecFn defines the sql exec method.
+	ExecFn func() (sql.Result, error)
+	// IndexQueryFn defines the query method that based on unique indexes.
+	IndexQueryFn func(v interface{}) (interface{}, error)
+	// PrimaryQueryFn defines the query method that based on primary keys.
+	PrimaryQueryFn func(v, primary interface{}) error
+	// QueryFn defines the query method.
+	QueryFn func(v interface{}) error
+
+	// A CachedConn is a DB connection with cache capability.
+	CachedConn struct {
+		db    *sqlx.DB
+		cache cache.Cache
+	}
+)
+
+// NewNodeConn returns a CachedConn with a redis node cache.
+func NewNodeConn(db *sqlx.DB, rds *redis.Redis, opts ...cache.Option) CachedConn {
+	return CachedConn{
+		db:    db,
+		cache: cache.NewNode(rds, exclusiveCalls, stats, sql.ErrNoRows, opts...),
+	}
+}
+
+// NewConn returns a CachedConn with a redis cluster cache.
+func NewConn(db *sqlx.DB, c cache.CacheConf, opts ...cache.Option) CachedConn {
+	return CachedConn{
+		db:    db,
+		cache: cache.New(c, exclusiveCalls, stats, sql.ErrNoRows, opts...),
+	}
+}
+
+// DelCache deletes cache with keys.
+func (cc CachedConn) DelCache(keys ...string) error {
+	return cc.cache.Del(keys...)
+}
+
+// GetCache unmarshals cache with given key into v.
+func (cc CachedConn) GetCache(key string, v interface{}) error {
+	return cc.cache.Get(key, v)
+}
+
+// Exec runs given exec on given keys, and returns execution result.
+func (cc CachedConn) Exec(exec ExecFn, keys ...string) (sql.Result, error) {
+	res, err := exec()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := cc.DelCache(keys...); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+// ExecNoCache runs exec with given sql statement, without affecting cache.
+func (cc CachedConn) ExecNoCache(ctx context.Context, q string, args ...interface{}) (sql.Result, error) {
+	return cc.db.Exec(ctx, q, args...)
+}
+
+// QueryRow unmarshals into v with given key and query func.
+func (cc CachedConn) QueryRow(v interface{}, key string, query QueryFn) error {
+	return cc.cache.Take(v, key, func(v interface{}) error {
+		return query(v)
+	})
+}
+
+// QueryRowIndex unmarshals into v with given key.
+func (cc CachedConn) QueryRowIndex(v interface{}, key string, keyer func(primary interface{}) string,
+	indexQuery IndexQueryFn, primaryQuery PrimaryQueryFn) error {
+	var primaryKey interface{}
+	var found bool
+
+	if err := cc.cache.TakeWithExpire(&primaryKey, key, func(val interface{}, expire time.Duration) (err error) {
+		primaryKey, err = indexQuery(v)
+		if err != nil {
+			return
+		}
+
+		found = true
+		return cc.cache.SetWithExpire(keyer(primaryKey), v, expire+cacheSafeGapBetweenIndexAndPrimary)
+	}); err != nil {
+		return err
+	}
+
+	if found {
+		return nil
+	}
+
+	return cc.cache.Take(v, keyer(primaryKey), func(v interface{}) error {
+		return primaryQuery(v, primaryKey)
+	})
+}
+
+//// QueryRowNoCache unmarshals into v with given statement.
+//func (cc CachedConn) QueryRowNoCache(ctx context.Context, v interface{}, q string, args ...interface{}) error {
+//	return cc.db.QueryRow(ctx, v, q, args...)
+//}
+//
+//// QueryRowsNoCache unmarshals into v with given statement.
+//// It doesn't use cache, because it might cause consistency problem.
+//func (cc CachedConn) QueryRowsNoCache(v interface{}, q string, args ...interface{}) error {
+//	return cc.db.QueryRows(v, q, args...)
+//}
+
+// SetCache sets v into cache with given key.
+func (cc CachedConn) SetCache(key string, v interface{}) error {
+	return cc.cache.Set(key, v)
+}
+
+//// Transact runs given fn in transaction mode.
+//func (cc CachedConn) Transact(fn func(sqlx.Session) error) error {
+//	return cc.db.Transact(fn)
+//}
