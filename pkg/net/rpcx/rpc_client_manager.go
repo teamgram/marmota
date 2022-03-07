@@ -19,6 +19,7 @@
 package rpcx
 
 import (
+	"github.com/zeromicro/go-zero/core/logx"
 	"io"
 	"strings"
 
@@ -43,6 +44,10 @@ func GetCachedRpcClient(c zrpc.RpcClientConf) zrpc.Client {
 		val io.Closer
 		err error
 	)
+	if c.Etcd.Key == "" {
+		panic(c)
+	}
+	logx.Infof("client: %v", c)
 	if len(c.Endpoints) > 0 {
 		val, err = clientManager.GetResource(strings.Join(c.Endpoints, "/"), func() (io.Closer, error) {
 			cli := zrpc.MustNewClient(c)
