@@ -9,6 +9,8 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.0
 	github.com/zeromicro/go-zero v1.3.1
+	go.uber.org/atomic v1.9.0
+	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
 	gopkg.in/go-playground/validator.v9 v9.31.0
 )
 
@@ -63,12 +65,10 @@ require (
 	go.opentelemetry.io/otel/exporters/zipkin v1.3.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.3.0 // indirect
 	go.opentelemetry.io/otel/trace v1.3.0 // indirect
-	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/automaxprocs v1.4.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.21.0 // indirect
 	golang.org/x/crypto v0.0.0-20210920023735-84f357641f63 // indirect
-	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d // indirect
 	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
@@ -91,4 +91,4 @@ require (
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
 
-replace github.com/zeromicro/go-zero v1.3.1 => github.com/teamgramio/go-zero v1.3.1-0.20220301141601-aaf0bef29203
+replace github.com/zeromicro/go-zero v1.3.1 => github.com/teamgramio/go-zero v1.3.1-0.20220314143445-297e6bb3c35e
