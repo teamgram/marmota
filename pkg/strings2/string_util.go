@@ -91,7 +91,7 @@ func JoinUint64List(s []uint64, sep string) string {
 }
 
 // IsAlNumString returns true if an alpha numeric string consists of characters a-zA-Z0-9
-
+//
 // https://github.com/nebulaim/telegramd/issues/99
 //
 // there are some issue in username validation

@@ -47,7 +47,7 @@ var (
 // rand.Rand instance with a fixed seed and using it for each call,
 // the same random sequence of strings can be generated repeatedly
 // and predictably.
-func RandomSpec0(count uint, start, end int, letters, numbers bool,
+func RandomSpec0(count uint, start, end int, lower, upper, numbers bool,
 	chars []rune, rand *rand.Rand) string {
 	if count == 0 {
 		return ""
@@ -55,7 +55,7 @@ func RandomSpec0(count uint, start, end int, letters, numbers bool,
 	if start == 0 && end == 0 {
 		end = 'z' + 1
 		start = ' '
-		if !letters && !numbers {
+		if !lower && !upper && !numbers {
 			start = 0
 			end = math.MaxInt32
 		}
@@ -70,9 +70,9 @@ func RandomSpec0(count uint, start, end int, letters, numbers bool,
 		} else {
 			ch = chars[rand.Intn(gap)+start]
 		}
-		if letters && ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) ||
+		if lower && (ch >= 'a' && ch <= 'z') || upper && (ch >= 'A' && ch <= 'Z') ||
 			numbers && (ch >= '0' && ch <= '9') ||
-			(!letters && !numbers) {
+			(!lower && !upper && !numbers) {
 			if ch >= rune(56320) && ch <= rune(57343) {
 				if count == 0 {
 					count++
@@ -116,8 +116,8 @@ func RandomSpec0(count uint, start, end int, letters, numbers bool,
 //                 alphabetic characters
 // Param numbers - if true, generated string will include
 //                 numeric characters
-func RandomSpec1(count uint, start, end int, letters, numbers bool) string {
-	return RandomSpec0(count, start, end, letters, numbers, nil, defaultRand)
+func RandomSpec1(count uint, start, end int, lower, upper, numbers bool) string {
+	return RandomSpec0(count, start, end, lower, upper, numbers, nil, defaultRand)
 }
 
 // RandomAlphaOrNumeric
@@ -132,7 +132,7 @@ func RandomSpec1(count uint, start, end int, letters, numbers bool) string {
 // Param numbers - if true, generated string will include
 //                 numeric characters
 func RandomAlphaOrNumeric(count uint, letters, numbers bool) string {
-	return RandomSpec1(count, 0, 0, letters, numbers)
+	return RandomSpec1(count, 0, 0, letters, letters, numbers)
 }
 
 func RandomString(count uint) string {
@@ -140,7 +140,7 @@ func RandomString(count uint) string {
 }
 
 func RandomStringSpec0(count uint, set []rune) string {
-	return RandomSpec0(count, 0, len(set)-1, false, false, set, defaultRand)
+	return RandomSpec0(count, 0, len(set)-1, false, false, false, set, defaultRand)
 }
 
 func RandomStringSpec1(count uint, set string) string {
@@ -154,7 +154,7 @@ func RandomStringSpec1(count uint, set string) string {
 // Characters will be chosen from the set of characters whose
 // ASCII value is between 32 and 126 (inclusive).
 func RandomAscii(count uint) string {
-	return RandomSpec1(count, 32, 127, false, false)
+	return RandomSpec1(count, 32, 127, false, false, false)
 }
 
 // RandomAlphabetic
@@ -176,4 +176,20 @@ func RandomAlphanumeric(count uint) string {
 // Characters will be chosen from the set of numeric characters.
 func RandomNumeric(count uint) string {
 	return RandomAlphaOrNumeric(count, false, true)
+}
+
+func RandomLetterAlphanumeric(count uint) string {
+	return RandomSpec1(count, 0, 0, true, false, true)
+}
+
+func RandomUpperAlphanumeric(count uint) string {
+	return RandomSpec1(count, 0, 0, false, true, true)
+}
+
+func RandomLetterAlpha(count uint) string {
+	return RandomSpec1(count, 0, 0, true, false, false)
+}
+
+func RandomUpperAlpha(count uint) string {
+	return RandomSpec1(count, 0, 0, false, true, false)
 }

@@ -38,7 +38,7 @@ func assertEquals(t *testing.T, arg1, arg2 interface{}, falseMsg string, params 
 		if len(params) == 0 {
 			t.Error(falseMsg)
 		} else {
-			t.Errorf(falseMsg, params)
+			// t.Errorf(falseMsg, params)
 		}
 	}
 }
@@ -126,4 +126,11 @@ func TestRandomString(t *testing.T) {
 	str2 = RandomStringSpec0(21, strSet)
 	assertTrue(t, str1 != str2, "PASS", "str1 != str2")
 	fmt.Printf("RandomSpec0(21):\nstr1=%s\nstr2=%s\n", str1, str2)
+}
+
+func TestRandomString2(t *testing.T) {
+	fmt.Println(RandomLetterAlphanumeric(18))
+	fmt.Println(RandomUpperAlphanumeric(18))
+	fmt.Println(RandomLetterAlpha(18))
+	fmt.Println(RandomUpperAlpha(18))
 }
