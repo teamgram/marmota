@@ -19,6 +19,8 @@
 package http_util
 
 import (
+	"bytes"
+	"io"
 	"net/http"
 	"strings"
 
@@ -85,4 +87,25 @@ func BindWithApiRequest(r *http.Request, req HttpApiMethod) error {
 	logx.Infof("req(%s): %v", bindingReq.Method(), req)
 
 	return nil
+}
+
+func GetUploadFile(c *http.Request, key string) (fileName string, file []byte, err error) {
+	file2, fileHeader, err2 := c.FormFile(key)
+	if err2 != nil {
+		// logx.Infof("upload.wall_paper.file.illegal,err::%v", err2.Error())
+		err = err2
+		return
+	}
+	defer file2.Close()
+
+	buf := new(bytes.Buffer)
+	if _, err = io.Copy(buf, file2); err != nil {
+		// log.Errorf("upload.%s.file.illegal,err::%v", key, err.Error())
+		return
+	}
+
+	fileName = fileHeader.Filename
+	file = buf.Bytes()
+
+	return
 }
