@@ -20,10 +20,11 @@ package main
 
 import (
 	"context"
-
-	"github.com/zeromicro/go-zero/core/logx"
+	"fmt"
 
 	"github.com/teamgram/marmota/pkg/stores/sqlx"
+
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 //var configData = `
@@ -50,95 +51,126 @@ type Message1DO struct {
 
 func main() {
 	c := &sqlx.Config{
-		Addr:         "127.0.0.1:3306",
-		DSN:          "root:@tcp(127.0.0.1:3306)/test2?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai",
-		ReadDSN:      nil,
-		Active:       64,
-		Idle:         64,
-		IdleTimeout:  "4h",
-		QueryTimeout: "5s",
-		ExecTimeout:  "5s",
-		TranTimeout:  "5s",
+		// Addr:         "127.0.0.1:3306",
+		DSN:         "root:@tcp(127.0.0.1:3306)/test2?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai",
+		ReadDSN:     nil,
+		Active:      64,
+		Idle:        64,
+		IdleTimeout: "4h",
+		//QueryTimeout: "5s",
+		//ExecTimeout:  "5s",
+		//TranTimeout:  "5s",
 	}
 	db := sqlx.NewMySQL(c)
-	defer db.Close()
+	//// defer db.Close()
+	//commonDAO := sqlx.NewCommonDAO(db)
+	//
+	//existed := commonDAO.CheckExists(
+	//	context.Background(),
+	//	"message1",
+	//	map[string]interface{}{
+	//		"id": 1,
+	//	})
+	//fmt.Println("id: 1 ==> ", existed)
+	//
+	//existed = commonDAO.CheckExists(
+	//	context.Background(),
+	//	"message1",
+	//	map[string]interface{}{
+	//		"id": 10,
+	//	})
+	//fmt.Println("id: 10 ==> ", existed)
+	//
+	//sz := commonDAO.CalcSize(
+	//	context.Background(),
+	//	"message1",
+	//	map[string]interface{}{
+	//		"deleted": 1,
+	//	})
+	//fmt.Println("sz ==> ", sz)
+	//
+	//sz = commonDAO.CalcSizeByWhere(
+	//	context.Background(),
+	//	"message1",
+	//	"deleted = 1")
+	//
+	//fmt.Println("sz ==> ", sz)
+	//
+	//existed, _ = sqlx.CheckExists(
+	//	context.Background(),
+	//	commonDAO.DB(),
+	//	"message1",
+	//	map[string]interface{}{
+	//		"id": 10,
+	//	})
+	//fmt.Println("id: 10 ==> ", existed)
 
-	NamedExec2(db)
-	Query(db)
-	// QueryRow(db)
-	// Get(db)
-	// Select(db)
-	// In(db)
+	// NamedExec2(db)
+
+	//Query(db)
+	//QueryRow(db)
+	//Get(db)
+	//Select(db)
+	//In(db)
 	// Tx(db)
 	// TxNamedExec(db)
-	// BulkExec(db)
+	BulkExec(db)
 }
 
 func Query(db *sqlx.DB) {
-	rows, err := db.Query(context.Background(), "SELECT * FROM message1")
+	var (
+		v []Message1DO
+	)
+
+	err := db.QueryRows(context.Background(), &v, "SELECT * FROM message1 WHERE id = 0")
 	if err != nil {
 		logx.Errorf("query error - %v", err)
 		return
 	}
 
-	defer rows.Close()
-
-	for rows.Next() {
-		v1 := Message1DO{}
-		err = rows.StructScan(&v1)
-		if err != nil {
-			logx.Errorf("structScan in SelectAuthKeyIds(_), error: %v", err)
-			return
-		}
-
-		//logx.Info("%+v", v1)
-		//
-		//v2 := make(map[string]interface{})
-		//err = rows.MapScan(v2)
-		//if err != nil {
-		//	logx.Error("structScan in SelectAuthKeyIds(_), error: %v", err)
-		//	return
-		//}
-		//
-		//logx.Info("%v", v2)
-
-		v3 := Message1DO{}
-		err = rows.Scan(&v3.Id, &v3.MessageId, &v3.Data2, &v3.State, &v3.State, &v3.CreatedAt)
-		if err != nil {
-			logx.Errorf("structScan in SelectAuthKeyIds(_), error: %v", err)
-			return
-		}
-
-		logx.Info("%+v", v3)
-	}
+	logx.Info("%+v", v)
 }
 
 func QueryRow(db *sqlx.DB) {
-	row := db.QueryRow(context.Background(), "SELECT * FROM message1 LIMIT 1")
-	v1 := Message1DO{}
-	if err := row.StructScan(&v1); err != nil {
+	var (
+		v1 = new(Message1DO)
+	)
+
+	err := db.QueryRow(context.Background(), v1, "SELECT * FROM message1 LIMIT 1")
+	if err != nil {
 		logx.Errorf("query error - %v", err)
-		return
+		// return
 	}
-	logx.Info("%+v", v1)
+	fmt.Println(v1)
+
+	err = db.QueryRow(context.Background(), v1, "SELECT * FROM message1 WHERE id = 10")
+	if err != nil && err != sqlx.ErrNoRows {
+		logx.Errorf("query error - %v", err)
+		// return
+	}
+
+	fmt.Println(v1)
 }
 
 func Get(db *sqlx.DB) {
 	v1 := Message1DO{}
-	if err := db.Get(context.Background(), &v1, "SELECT * FROM message1 LIMIT 1"); err != nil {
+	if err := db.QueryRow(context.Background(), &v1, "SELECT * FROM message1 LIMIT 1"); err != nil {
 		logx.Errorf("query error - %v", err)
 		return
 	}
-	logx.Info("%+v", v1)
+	logx.Infof("%#v", v1)
 }
 
 func Select(db *sqlx.DB) {
-	v1 := make([]Message1DO, 0)
-	if err := db.Select(context.Background(), &v1, "SELECT * FROM message1"); err != nil {
+	var (
+		v1 []Message1DO
+	)
+
+	if err := db.QueryRows(context.Background(), &v1, "SELECT * FROM message1"); err != nil {
 		logx.Error("query error - %v", err)
 		return
 	}
-	logx.Infof("%+v", v1)
+	logx.Infof("%#v", v1)
 }
 
 func In(db *sqlx.DB) {
@@ -157,7 +189,7 @@ func In(db *sqlx.DB) {
 		return
 	}
 
-	if err := db.Select(context.Background(), &v1, query, a...); err != nil {
+	if err = db.QueryRows(context.Background(), &v1, query, a...); err != nil {
 		logx.Errorf("query error - %v", err)
 		return
 	}
@@ -168,54 +200,59 @@ func In(db *sqlx.DB) {
 }
 
 func Tx(db *sqlx.DB) {
-	tx, err := db.Begin(context.Background())
-	if err != nil {
-		logx.Errorf("Begin error - %v", err)
-		return
-	}
-
-	_, err = tx.Exec("INSERT INTO message1 (message_id, data2, state) VALUES(1000, '1000', 0)")
-	if err != nil {
-		logx.Errorf("exec error - %v", err)
-		tx.Rollback()
-	} else {
-		tx.Commit()
-	}
+	sqlx.TxWrapper(db, context.Background(), func(ctx context.Context, tx *sqlx.Tx) error {
+		tx.Exec(ctx, "INSERT INTO message1 (message_id, data2, state, deleted) VALUES(1000, '1000', 0, 0)")
+		return nil
+	})
+	//db.Master().
+	//tx, err := db.Begin(context.Background())
+	//if err != nil {
+	//	logx.Errorf("Begin error - %v", err)
+	//	return
+	//}
+	//
+	//_, err = tx.Exec("INSERT INTO message1 (message_id, data2, state) VALUES(1000, '1000', 0)")
+	//if err != nil {
+	//	logx.Errorf("exec error - %v", err)
+	//	tx.Rollback()
+	//} else {
+	//	tx.Commit()
+	//}
 }
 
-func Stmt(db *sqlx.DB) {
-	v1 := Message1DO{}
-
-	stmt, err := db.Prepare("SELECT * FROM message1")
-	if err != nil {
-		logx.Errorf("Begin error - %v", err)
-		return
-	}
-
-	defer stmt.Close()
-
-	err = stmt.QueryRow(context.Background()).StructScan(&v1)
-	// "INSERT INTO message1 (message_id, data2, state) VALUES(1000, '1000', 0)")
-	if err != nil {
-		logx.Errorf("exec error - %v", err)
-		return
-	}
-
-	logx.Infof("%+v", v1)
-}
-
-func NamedExec(db *sqlx.DB) {
-	v1 := &Message1DO{
-		MessageId: 1003,
-		Data2:     "1003",
-		State:     0,
-	}
-
-	_, err := db.NamedExec(context.Background(), "INSERT INTO message1 (message_id, data2, state) VALUES(:message_id, :data2, :state)", v1)
-	if err != nil {
-		logx.Errorf("exec error - %v", err)
-	}
-}
+//func Stmt(db *sqlx.DB) {
+//	v1 := Message1DO{}
+//
+//	stmt, err := db.Prepare("SELECT * FROM message1")
+//	if err != nil {
+//		logx.Errorf("Begin error - %v", err)
+//		return
+//	}
+//
+//	defer stmt.Close()
+//
+//	err = stmt.QueryRow(context.Background()).StructScan(&v1)
+//	// "INSERT INTO message1 (message_id, data2, state) VALUES(1000, '1000', 0)")
+//	if err != nil {
+//		logx.Errorf("exec error - %v", err)
+//		return
+//	}
+//
+//	logx.Infof("%+v", v1)
+//}
+//
+//func NamedExec(db *sqlx.DB) {
+//	v1 := &Message1DO{
+//		MessageId: 1003,
+//		Data2:     "1003",
+//		State:     0,
+//	}
+//
+//	_, err := db.NamedExec(context.Background(), "INSERT INTO message1 (message_id, data2, state) VALUES(:message_id, :data2, :state)", v1)
+//	if err != nil {
+//		logx.Errorf("exec error - %v", err)
+//	}
+//}
 
 func NamedExec2(db *sqlx.DB) {
 	v1 := &Message1DO{
@@ -233,41 +270,45 @@ func NamedExec2(db *sqlx.DB) {
 
 func TxNamedExec(db *sqlx.DB) {
 	v1 := &Message1DO{
-		MessageId: 1004,
+		MessageId: 1005,
 		Data2:     "1004",
-		State:     0,
+		State:     1,
+		Deleted:   false,
 	}
 
-	tx, err := db.Begin(context.Background())
-	if err != nil {
-		logx.Errorf("Begin error - %v", err)
-		return
-	}
-
-	_, err = tx.NamedExec("INSERT INTO message1 (message_id, data2, state) VALUES(:message_id, :data2, :state)", v1)
-	if err != nil {
-		logx.Errorf("exec error - %v", err)
-		tx.Rollback()
-	} else {
-		tx.Commit()
-	}
+	sqlx.TxWrapper(db, context.Background(), func(ctx context.Context, tx *sqlx.Tx) error {
+		_, err := tx.NamedExec(
+			ctx,
+			"INSERT INTO message1 (message_id, data2, state, deleted) VALUES(:message_id, :data2, :state, :deleted)",
+			v1)
+		if err != nil {
+			fmt.Println(err)
+		}
+		return err
+	})
 }
 
 func BulkExec(db *sqlx.DB) {
 	v1 := []*Message1DO{
 		&Message1DO{
-			MessageId: 1004,
+			MessageId: 1104,
 			Data2:     "1004",
 			State:     0,
+			Deleted:   false,
 		},
 		&Message1DO{
-			MessageId: 1005,
+			MessageId: 1105,
 			Data2:     "1005",
 			State:     0,
+			Deleted:   false,
 		},
 	}
 
-	_, err := db.NamedExec(context.Background(), "INSERT INTO message1 (message_id, data2, state) VALUES(:message_id, :data2, :state)", v1)
+	// sqlx2.NewBulkInserter(db.Master(), "INSERT INTO message1 (message_id, data2, state) VALUES(:message_id, :data2, :state)")
+	_, err := db.NamedExec(
+		context.Background(),
+		"INSERT INTO message1 (message_id, data2, state, deleted) VALUES(:message_id, :data2, :state, :deleted)",
+		v1)
 	if err != nil {
 		logx.Error("exec error - %v", err)
 	}

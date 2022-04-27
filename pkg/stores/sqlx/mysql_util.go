@@ -22,9 +22,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
-
 	"github.com/zeromicro/go-zero/core/logx"
+	"strings"
 )
 
 type CommonDAO struct {
@@ -35,38 +34,40 @@ func NewCommonDAO(db *DB) *CommonDAO {
 	return &CommonDAO{db}
 }
 
+func (dao *CommonDAO) DB() *DB {
+	return dao.db
+}
+
+// CheckExists
 // 检查是否存在
 func (dao *CommonDAO) CheckExists(ctx context.Context, table string, params map[string]interface{}) bool {
 	if len(params) == 0 {
-		logx.Errorf("CheckExists - [%s] error: params empty!", table)
+		logx.WithContext(ctx).Errorf("CheckExists - [%s] error: params empty!", table)
 		return false
 	}
 
 	names := make([]string, 0, len(params))
 	for k, _ := range params {
 		names = append(names, k+" = :"+k)
-		// log.Info("k: ", k, ", v: ", v)
 	}
 	sql := fmt.Sprintf("SELECT 1 FROM %s WHERE %s LIMIT 1", table, strings.Join(names, " AND "))
-	// log.Info("checkExists - sql: ", sql, ", params: ", params)
-	rows, err := dao.db.NamedQuery(ctx, sql, params)
-	if err != nil {
-		logx.Errorf("CheckExists - [%s] error: %s", table, err)
+
+	var (
+		existed int
+	)
+
+	err := dao.db.NamedQueryRowPartial(ctx, &existed, sql, params)
+	if err != nil && err != ErrNotFound {
+		logx.WithContext(ctx).Errorf("CheckExists - [%s] error: %s", table, err)
 		return false
 	}
 
-	defer rows.Close()
-
-	if rows.Next() {
-		return true
-	} else {
-		return false
-	}
+	return existed == 1
 }
 
 func (dao *CommonDAO) CalcSize(ctx context.Context, table string, params map[string]interface{}) int {
 	if len(params) == 0 {
-		logx.Errorf("calcSize - [%s] error: params empty!", table)
+		logx.WithContext(ctx).Errorf("calcSize - [%s] error: params empty!", table)
 		return 0
 	}
 
@@ -75,12 +76,11 @@ func (dao *CommonDAO) CalcSize(ctx context.Context, table string, params map[str
 	for k, v := range params {
 		names = append(names, k+" = ?")
 		aValues = append(aValues, v)
-		// log.Info("k: ", k, ", v: ", v)
 	}
 	sql := fmt.Sprintf("SELECT count(id) FROM %s WHERE %s", table, strings.Join(names, " AND "))
 
 	var count int
-	err := dao.db.Get(ctx, &count, sql, aValues...)
+	err := dao.db.QueryRow(ctx, &count, sql, aValues...)
 	if err != nil {
 		logx.Errorf("calcSize - [%s] error: %s", sql, err)
 		return 0
@@ -92,7 +92,7 @@ func (dao *CommonDAO) CalcSizeByWhere(ctx context.Context, table, where string) 
 	sql := fmt.Sprintf("SELECT count(id) FROM %s WHERE %s", table, where)
 
 	var count int
-	err := dao.db.Get(ctx, &count, sql)
+	err := dao.db.QueryRow(ctx, &count, sql)
 	if err != nil {
 		logx.Errorf("calcSize - [%s] error: %s", sql, err)
 		return 0
@@ -100,33 +100,29 @@ func (dao *CommonDAO) CalcSizeByWhere(ctx context.Context, table, where string) 
 	return count
 }
 
+// CheckExists
 // 检查是否存在
 func CheckExists(ctx context.Context, db *DB, table string, params map[string]interface{}) (bool, error) {
-	_ = ctx
-
 	if len(params) == 0 {
-		logx.Errorf("checkExists - [%s] error: params empty!", table)
+		logx.WithContext(ctx).Errorf("checkExists - [%s] error: params empty!", table)
 		return false, errors.New("params empty")
 	}
 
 	names := make([]string, 0, len(params))
 	for k, _ := range params {
 		names = append(names, k+" = :"+k)
-		// log.Info("k: ", k, ", v: ", v)
 	}
 	sql := fmt.Sprintf("SELECT 1 FROM %s WHERE %s LIMIT 1", table, strings.Join(names, " AND "))
-	// log.Info("checkExists - sql: ", sql, ", params: ", params)
-	rows, err := db.NamedQuery(ctx, sql, params)
-	if err != nil {
-		logx.Errorf("checkExists - [%s] error: %s", table, err)
+
+	var (
+		existed int
+	)
+
+	err := db.NamedQueryRowPartial(ctx, &existed, sql, params)
+	if err != nil && err != ErrNotFound {
+		logx.WithContext(ctx).Errorf("CheckExists - [%s] error: %s", table, err)
 		return false, err
 	}
 
-	defer rows.Close()
-
-	if rows.Next() {
-		return true, nil
-	} else {
-		return false, nil
-	}
+	return existed == 1, nil
 }

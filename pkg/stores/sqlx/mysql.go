@@ -20,46 +20,27 @@ package sqlx
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/zeromicro/go-zero/core/logx"
+)
 
-	"github.com/teamgram/marmota/pkg/time"
+var (
+	ErrNotFound = sql.ErrNoRows
 )
 
 // Config mysql config.
 type Config struct {
-	Addr         string        // for trace
-	DSN          string        // write data source name.
-	ReadDSN      []string      `json:",optional"` // read data source name.
-	Active       int           `json:",optional"` // pool
-	Idle         int           `json:",optional"` // pool
-	IdleTimeout  string        `json:",optional"` // connect max life time.
-	QueryTimeout string        `json:",optional"` // query sql timeout
-	ExecTimeout  string        `json:",optional"` // execute sql timeout
-	TranTimeout  string        `json:",optional"` // transaction sql timeout
-	idleTimeout  time.Duration `json:",optional"` // connect max life time.
-	queryTimeout time.Duration `json:",optional"` // query sql timeout
-	execTimeout  time.Duration `json:",optional"` // execute sql timeout
-	tranTimeout  time.Duration `json:",optional"` // transaction sql timeout
-	// Breaker      *breaker.Config // breaker
-}
-
-func (c *Config) resetTimeout() {
-	c.idleTimeout.UnmarshalText([]byte(c.IdleTimeout))
-	c.queryTimeout.UnmarshalText([]byte(c.QueryTimeout))
-	c.execTimeout.UnmarshalText([]byte(c.ExecTimeout))
-	c.tranTimeout.UnmarshalText([]byte(c.TranTimeout))
+	DSN         string   // write data source name.
+	ReadDSN     []string `json:",optional"` // read data source name.
+	Active      int      `json:",optional"` // pool
+	Idle        int      `json:",optional"` // pool
+	IdleTimeout string   `json:",optional"` // connect max life time.
 }
 
 // NewMySQL new db and retry connection when has error.
 func NewMySQL(c *Config) (db *DB) {
-	// hack
-	c.resetTimeout()
-
-	if c.queryTimeout == 0 || c.execTimeout == 0 || c.tranTimeout == 0 {
-		panic("mysql must be set query/execute/transction timeout")
-	}
 	db, err := Open(c)
 	if err != nil {
 		logx.Error("open mysql error(%v)", err)
@@ -69,25 +50,8 @@ func NewMySQL(c *Config) (db *DB) {
 }
 
 // TxWrapper TxWrapper
-func TxWrapper(ctx context.Context, db *DB, txF func(*Tx, *StoreResult)) *StoreResult {
-	result := &StoreResult{}
-
-	tx, err := db.Begin(ctx)
-	if err != nil {
-		result.Err = err
-		return result
-	}
-
-	defer func() {
-		if result.Err != nil {
-			tx.Rollback()
-		} else {
-			result.Err = tx.Commit()
-		}
-	}()
-
-	txF(tx, result)
-	return result
+func TxWrapper(db *DB, ctx context.Context, fn func(context.Context, *Tx) error) error {
+	return db.write.Transact(ctx, fn)
 }
 
 // IsDuplicate
@@ -101,6 +65,8 @@ func IsDuplicate(err error) bool {
 	return ok && myerr.Number == 1062
 }
 
+// IsMissingDb
+// IsMissingDb
 func IsMissingDb(err error) bool {
 	if err == nil {
 		return false

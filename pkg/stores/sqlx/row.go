@@ -1,4 +1,4 @@
-// Copyright 2022 Teamgram Authors
+// Copyright (c) 2021-present,  Teamgram Studio (https://teamgram.io).
 //  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,23 +12,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
-// Author: teamgramio (teamgram.io@gmail.com)
-//
 
 package sqlx
 
 import (
-	"database/sql"
-	"database/sql/driver"
-	"fmt"
 	"reflect"
 	"strings"
 	"sync"
-	"time"
-
-	"github.com/pkg/errors"
-	// "github.com/zeromicro/go-zero/core/trace/tracespec"
 
 	"github.com/teamgram/marmota/pkg/stores/sqlx/reflectx"
 )
@@ -67,6 +57,7 @@ func mapper() *reflectx.Mapper {
 	return mpr
 }
 
+/*
 // isScannable takes the reflect.Type and the actual dest value and returns
 // whether or not it's Scannable.  Something is scannable if:
 //   * it is not a struct
@@ -753,3 +744,4 @@ func missingFields(transversals [][]int) (field int, err error) {
 	}
 	return 0, nil
 }
+*/
