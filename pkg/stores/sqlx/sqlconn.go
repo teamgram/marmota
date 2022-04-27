@@ -120,9 +120,9 @@ func (db *conn) RawDB() (*sql.DB, error) {
 	return db.conn.RawDB()
 }
 
-func (db *conn) Transact(ctx context.Context, fn func(context.Context, *Tx) error) error {
+func (db *conn) Transact(ctx context.Context, fn func(*Tx) error) error {
 	return db.conn.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
-		tx := newTx(session)
-		return fn(ctx, tx)
+		tx := newTx(ctx, session)
+		return fn(tx)
 	})
 }

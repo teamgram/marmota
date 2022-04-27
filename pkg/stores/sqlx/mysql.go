@@ -49,9 +49,21 @@ func NewMySQL(c *Config) (db *DB) {
 	return
 }
 
+//// TxWrapper TxWrapper
+//func TxWrapper(ctx context.Context, db *DB, fn func(*Tx) error) error {
+//	return db.write.Transact(ctx, fn)
+//}
+
 // TxWrapper TxWrapper
-func TxWrapper(ctx context.Context, db *DB, fn func(context.Context, *Tx) error) error {
-	return db.write.Transact(ctx, fn)
+func TxWrapper(ctx context.Context, db *DB, txF func(*Tx, *StoreResult)) *StoreResult {
+	result := &StoreResult{}
+
+	result.Err = db.write.Transact(ctx, func(tx *Tx) error {
+		txF(tx, result)
+		return result.Err
+	})
+
+	return result
 }
 
 // IsDuplicate

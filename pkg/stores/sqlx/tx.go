@@ -28,13 +28,14 @@ import (
 
 type Tx struct {
 	conn sqlx.Session
+	ctx  context.Context
 	*reflectx.Mapper
-	ctx context.Context
 }
 
-func newTx(sess sqlx.Session) *Tx {
+func newTx(c context.Context, sess sqlx.Session) *Tx {
 	return &Tx{
 		conn:   sess,
+		ctx:    c,
 		Mapper: mapper(),
 	}
 }

@@ -34,16 +34,17 @@ import (
 //)
 
 var (
-	// ErrStmtNil prepared stmt error
-	ErrStmtNil = errors.New("sql: prepare failed and stmt nil")
+	//	// ErrStmtNil prepared stmt error
+	//	ErrStmtNil = errors.New("sql: prepare failed and stmt nil")
 	// ErrNoMaster is returned by Master when call master multiple times.
 	ErrNoMaster = errors.New("sql: no master instance")
-	// ErrNoRows is returned by Scan when QueryRow doesn't return a row.
-	// In such a case, QueryRow returns a placeholder *Row value that defers
-	// this error until a Scan.
-	ErrNoRows = sql.ErrNoRows
-	// ErrTxDone transaction done.
-	ErrTxDone = sql.ErrTxDone
+
+//	// ErrNoRows is returned by Scan when QueryRow doesn't return a row.
+//	// In such a case, QueryRow returns a placeholder *Row value that defers
+//	// this error until a Scan.
+//	ErrNoRows = sql.ErrNoRows
+//	// ErrTxDone transaction done.
+//	ErrTxDone = sql.ErrTxDone
 )
 
 // DB database.
@@ -203,6 +204,6 @@ func (db *DB) NamedQueryRowsPartial(c context.Context, v interface{}, query stri
 	return db.write.NamedQueryRowsPartial(c, v, query, arg)
 }
 
-func (db *DB) Transact(ctx context.Context, fn func(context.Context, *Tx) error) error {
+func (db *DB) Transact(ctx context.Context, fn func(*Tx) error) error {
 	return db.write.Transact(ctx, fn)
 }

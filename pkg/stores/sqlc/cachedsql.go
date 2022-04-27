@@ -147,6 +147,6 @@ func (cc CachedConn) SetCache(ctx context.Context, key string, val interface{}) 
 }
 
 // Transact runs given fn in transaction mode.
-func (cc CachedConn) Transact(ctx context.Context, fn func(context.Context, *sqlx.Tx) error) error {
+func (cc CachedConn) Transact(ctx context.Context, fn func(c *sqlx.Tx) error) error {
 	return cc.db.Transact(ctx, fn)
 }
