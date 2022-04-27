@@ -17,6 +17,7 @@ import (
 type Tx struct {
 	conn sqlx.Session
 	*reflectx.Mapper
+	ctx context.Context
 }
 
 func newTx(sess sqlx.Session) *Tx {
@@ -26,71 +27,75 @@ func newTx(sess sqlx.Session) *Tx {
 	}
 }
 
-func (db *Tx) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	return db.conn.ExecCtx(ctx, query, args...)
+func (tx *Tx) Context() context.Context {
+	return tx.ctx
+}
+
+func (tx *Tx) Exec(query string, args ...interface{}) (sql.Result, error) {
+	return tx.conn.ExecCtx(tx.ctx, query, args...)
 }
 
 // NamedExec using this DB.
 // Any named placeholder parameters are replaced with fields from arg.
-func (db *Tx) NamedExec(c context.Context, query string, arg interface{}) (sql.Result, error) {
-	q, args, err := bindNamedMapper(QUESTION, query, arg, db.Mapper)
+func (tx *Tx) NamedExec(query string, arg interface{}) (sql.Result, error) {
+	q, args, err := bindNamedMapper(QUESTION, query, arg, tx.Mapper)
 	if err != nil {
 		return nil, err
 	}
 
-	return db.conn.ExecCtx(c, q, args...)
+	return tx.conn.ExecCtx(tx.ctx, q, args...)
 }
 
-func (db *Tx) Prepare(ctx context.Context, query string) (sqlx.StmtSession, error) {
-	return db.conn.PrepareCtx(ctx, query)
+func (tx *Tx) Prepare(query string) (sqlx.StmtSession, error) {
+	return tx.conn.PrepareCtx(tx.ctx, query)
 }
 
-func (db *Tx) QueryRow(ctx context.Context, v interface{}, query string, args ...interface{}) error {
-	return db.conn.QueryRowCtx(ctx, v, query, args...)
+func (tx *Tx) QueryRow(v interface{}, query string, args ...interface{}) error {
+	return tx.conn.QueryRowCtx(tx.ctx, v, query, args...)
 }
 
 // NamedQueryRow using this DB.
 // Any named placeholder parameters are replaced with fields from arg.
-func (db *Tx) NamedQueryRow(c context.Context, v interface{}, query string, arg interface{}) error {
-	q, args, err := bindNamedMapper(QUESTION, query, arg, db.Mapper)
+func (tx *Tx) NamedQueryRow(v interface{}, query string, arg interface{}) error {
+	q, args, err := bindNamedMapper(QUESTION, query, arg, tx.Mapper)
 	if err != nil {
 		return err
 	}
-	return db.QueryRow(c, v, q, args...)
+	return tx.QueryRow(v, q, args...)
 }
 
-func (db *Tx) QueryRowPartial(ctx context.Context, v interface{}, query string, args ...interface{}) error {
-	return db.conn.QueryRowPartialCtx(ctx, v, query, args...)
+func (tx *Tx) QueryRowPartial(v interface{}, query string, args ...interface{}) error {
+	return tx.conn.QueryRowPartialCtx(tx.ctx, v, query, args...)
 }
 
-func (db *Tx) NamedQueryRowPartial(c context.Context, v interface{}, query string, arg interface{}) error {
-	q, args, err := bindNamedMapper(QUESTION, query, arg, db.Mapper)
+func (tx *Tx) NamedQueryRowPartial(v interface{}, query string, arg interface{}) error {
+	q, args, err := bindNamedMapper(QUESTION, query, arg, tx.Mapper)
 	if err != nil {
 		return err
 	}
-	return db.QueryRowPartial(c, v, q, args...)
+	return tx.QueryRowPartial(v, q, args...)
 }
 
-func (db *Tx) QueryRows(ctx context.Context, v interface{}, query string, args ...interface{}) error {
-	return db.conn.QueryRowsCtx(ctx, v, query, args...)
+func (tx *Tx) QueryRows(v interface{}, query string, args ...interface{}) error {
+	return tx.conn.QueryRowsCtx(tx.ctx, v, query, args...)
 }
 
-func (db *Tx) NamedQueryRows(c context.Context, v interface{}, query string, arg interface{}) error {
-	q, args, err := bindNamedMapper(QUESTION, query, arg, db.Mapper)
+func (tx *Tx) NamedQueryRows(v interface{}, query string, arg interface{}) error {
+	q, args, err := bindNamedMapper(QUESTION, query, arg, tx.Mapper)
 	if err != nil {
 		return err
 	}
-	return db.QueryRows(c, v, q, args...)
+	return tx.QueryRows(v, q, args...)
 }
 
-func (db *Tx) QueryRowsPartial(ctx context.Context, v interface{}, query string, args ...interface{}) error {
-	return db.conn.QueryRowsPartialCtx(ctx, v, query, args...)
+func (tx *Tx) QueryRowsPartial(v interface{}, query string, args ...interface{}) error {
+	return tx.conn.QueryRowsPartialCtx(tx.ctx, v, query, args...)
 }
 
-func (db *Tx) NamedQueryRowsPartial(c context.Context, v interface{}, query string, arg interface{}) error {
-	q, args, err := bindNamedMapper(QUESTION, query, arg, db.Mapper)
+func (tx *Tx) NamedQueryRowsPartial(v interface{}, query string, arg interface{}) error {
+	q, args, err := bindNamedMapper(QUESTION, query, arg, tx.Mapper)
 	if err != nil {
 		return err
 	}
-	return db.QueryRowsPartial(c, v, q, args...)
+	return tx.QueryRowsPartial(v, q, args...)
 }
