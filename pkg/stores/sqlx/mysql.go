@@ -50,7 +50,7 @@ func NewMySQL(c *Config) (db *DB) {
 }
 
 // TxWrapper TxWrapper
-func TxWrapper(db *DB, ctx context.Context, fn func(context.Context, *Tx) error) error {
+func TxWrapper(ctx context.Context, db *DB, fn func(context.Context, *Tx) error) error {
 	return db.write.Transact(ctx, fn)
 }
 
