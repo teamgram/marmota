@@ -26,7 +26,7 @@ var (
 
 type (
 	// ExecFn defines the sql exec method.
-	ExecFn func(ctx context.Context, conn *sqlx.DB) (sql.Result, error)
+	ExecFn func(ctx context.Context, conn *sqlx.DB) (int64, int64, error)
 	// IndexQueryFn defines the query method that based on unique indexes.
 	IndexQueryFn func(ctx context.Context, conn *sqlx.DB, v interface{}) (interface{}, error)
 	// PrimaryQueryFn defines the query method that based on primary keys.
@@ -72,17 +72,14 @@ func (cc CachedConn) GetCache(ctx context.Context, key string, v interface{}) er
 }
 
 // Exec runs given exec on given keys, and returns execution result.
-func (cc CachedConn) Exec(ctx context.Context, exec ExecFn, keys ...string) (sql.Result, error) {
-	res, err := exec(ctx, cc.db)
+func (cc CachedConn) Exec(ctx context.Context, exec ExecFn, keys ...string) (lastInsertId, rowsAffected int64, err error) {
+	lastInsertId, rowsAffected, err = exec(ctx, cc.db)
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	if err := cc.DelCache(ctx, keys...); err != nil {
-		return nil, err
-	}
-
-	return res, nil
+	err = cc.DelCache(ctx, keys...)
+	return
 }
 
 // ExecNoCache runs exec with given sql statement, without affecting cache.
