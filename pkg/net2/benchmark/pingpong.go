@@ -82,6 +82,11 @@ func (c *PingpongCodec) Close() error {
 	return c.c.Close()
 }
 
+func (c *PingpongCodec) Context() interface{} {
+	return nil
+}
+
+// PingpongServer
 /////////////////////////////////////////////////////////////////////////////////////////
 type PingpongServer struct {
 	server *net2.TcpServer

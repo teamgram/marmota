@@ -92,3 +92,7 @@ func (c *LengthBasedFrameCodec) Receive() (interface{}, error) {
 func (c *LengthBasedFrameCodec) Close() error {
 	return c.stream.close()
 }
+
+func (c *LengthBasedFrameCodec) Context() interface{} {
+	return nil
+}

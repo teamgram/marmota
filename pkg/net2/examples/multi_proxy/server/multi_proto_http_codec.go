@@ -162,3 +162,7 @@ func (m *MultiProtoHttpCodec) Send(msg interface{}) error {
 func (m *MultiProtoHttpCodec) Close() error {
 	return m.conn.Close()
 }
+
+func (c *MultiProtoHttpCodec) Context() interface{} {
+	return nil
+}

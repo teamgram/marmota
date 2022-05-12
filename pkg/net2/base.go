@@ -37,6 +37,7 @@ type Codec interface {
 	Receive() (interface{}, error)
 	Send(interface{}) error
 	Close() error
+	Context() interface{}
 	// CodeType() int
 }
 

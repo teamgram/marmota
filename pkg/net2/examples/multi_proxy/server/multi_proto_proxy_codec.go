@@ -148,3 +148,7 @@ func (c *MultiProtoProxyCodec) Close() error {
 	}
 	return c.codec.Close()
 }
+
+func (c *MultiProtoProxyCodec) Context() interface{} {
+	return nil
+}
