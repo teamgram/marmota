@@ -21,6 +21,8 @@ package commands
 import (
 	"errors"
 	"flag"
+	"fmt"
+	"github.com/teamgram/marmota/pkg/version"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -35,6 +37,7 @@ import (
 var (
 	GMainInst MainInstance
 	GSignal   chan os.Signal
+	ver       = flag.Bool("version", false, "prints current version")
 )
 
 type MainInstance interface {
@@ -45,6 +48,13 @@ type MainInstance interface {
 
 func Run(inst MainInstance) {
 	flag.Parse()
+
+	if *ver {
+		v := version.GetVersion()
+		fmt.Printf("Version: %s\nGitBranch: %s\nCommitId: %s\nBuild Date: %s\nGo Version: %s\nOS/Arch: %s\n", v.Version, v.GitBranch, v.GitCommit, v.BuildDate, v.GoVersion, v.Platform)
+		os.Exit(0)
+	}
+
 	// if err := paladin.Init(); err != nil {
 	//	panic(err)
 	//}
