@@ -20,7 +20,6 @@ package main
 
 import (
 	"github.com/teamgram/marmota/pkg/commands"
-
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
@@ -30,13 +29,28 @@ type exapmlesInstance struct {
 }
 
 func (e *exapmlesInstance) Initialize() error {
+	logx.SetUp(logx.LogConf{
+		ServiceName:         "examples",
+		Mode:                "file",
+		Encoding:            "json",
+		TimeFormat:          "",
+		Path:                "logs",
+		Level:               "info",
+		Compress:            false,
+		KeepDays:            0,
+		StackCooldownMillis: 100,
+		MaxBackups:          0,
+		MaxSize:             0,
+		Rotation:            "daily",
+	})
 	logx.Info("null instance initialize")
 	return nil
 }
 
 func (e *exapmlesInstance) RunLoop() {
 	logx.Info("null run_loop...")
-	// os.Exit(1)
+	// commands.GSignal <- syscall.SIGQUIT
+	commands.DoExit()
 }
 
 func (e *exapmlesInstance) Destroy() {

@@ -8,7 +8,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.0
-	github.com/zeromicro/go-zero v1.3.6-0.20220723041537-edbf1a3b6356
+	github.com/zeromicro/go-zero v1.3.6-0.20220724061557-9b334b54283e
 	go.uber.org/atomic v1.9.0
 	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e
 	gopkg.in/go-playground/validator.v9 v9.31.0

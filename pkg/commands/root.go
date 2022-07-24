@@ -55,10 +55,6 @@ func Run(inst MainInstance) {
 		os.Exit(0)
 	}
 
-	// if err := paladin.Init(); err != nil {
-	//	panic(err)
-	//}
-	// logx.Init(nil) // debug flag: log.dir={path}
 	defer logx.Close()
 
 	if inst == nil {
@@ -70,15 +66,6 @@ func Run(inst MainInstance) {
 	rand.Seed(time.Now().UTC().UnixNano())
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	//if enableZipkin {
-	//	zipkin.Init(&zipkin.Config{
-	//		Endpoint: "http://localhost:9411/api/v2/spans",
-	//	})
-	//} else if enableJaeger {
-	//	jaeger.Init()
-	//}
-
-	//log.SetFormat("[%D %T] [%L] [%S] %M")
 	logx.Info("instance initialize...")
 	err := inst.Initialize()
 	logx.Info("inited")
@@ -109,4 +96,8 @@ func Run(inst MainInstance) {
 			return
 		}
 	}
+}
+
+func DoExit() {
+	GSignal <- syscall.SIGQUIT
 }
