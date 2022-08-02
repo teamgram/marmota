@@ -8,7 +8,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.0
-	github.com/zeromicro/go-zero v1.3.6-0.20220724061557-9b334b54283e
+	github.com/zeromicro/go-zero v1.3.6-0.20220731160124-49367f1713c0
 	go.uber.org/atomic v1.9.0
 	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e
 	gopkg.in/go-playground/validator.v9 v9.31.0
@@ -105,7 +105,7 @@ require (
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220628213854-d9e0b6570c03 // indirect
 	google.golang.org/grpc v1.48.0 // indirect
-	google.golang.org/protobuf v1.28.0 // indirect
+	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
