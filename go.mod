@@ -8,7 +8,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.0
-	github.com/zeromicro/go-zero v1.3.6-0.20220731160124-49367f1713c0
+	github.com/zeromicro/go-zero v1.4.0
 	go.uber.org/atomic v1.9.0
 	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e
 	gopkg.in/go-playground/validator.v9 v9.31.0
@@ -86,11 +86,11 @@ require (
 	go.etcd.io/etcd/client/pkg/v3 v3.5.4 // indirect
 	go.etcd.io/etcd/client/v3 v3.5.4 // indirect
 	go.opencensus.io v0.23.0 // indirect
-	go.opentelemetry.io/otel v1.8.0 // indirect
-	go.opentelemetry.io/otel/exporters/jaeger v1.8.0 // indirect
-	go.opentelemetry.io/otel/exporters/zipkin v1.8.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.8.0 // indirect
-	go.opentelemetry.io/otel/trace v1.8.0 // indirect
+	go.opentelemetry.io/otel v1.9.0 // indirect
+	go.opentelemetry.io/otel/exporters/jaeger v1.9.0 // indirect
+	go.opentelemetry.io/otel/exporters/zipkin v1.9.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.9.0 // indirect
+	go.opentelemetry.io/otel/trace v1.9.0 // indirect
 	go.uber.org/automaxprocs v1.5.1 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.21.0 // indirect
