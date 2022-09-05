@@ -5,6 +5,9 @@ import (
 	"github.com/Shopify/sarama"
 )
 
+// spanName is used to identify the span name for the SQL execution.
+const spanName = "kafka.producer"
+
 type Producer struct {
 	SyncProducer sarama.SyncProducer
 	c            *KafkaProducerConf
@@ -26,14 +29,19 @@ func MustKafkaProducer(c *KafkaProducerConf) *Producer {
 // SendMessage
 // Input send msg to kafka
 // NOTE: If producer has beed created failed, the message will lose.
-func (p *Producer) SendMessage(ctx context.Context, key string, value []byte) (int32, int64, error) {
-	_ = ctx
+func (p *Producer) SendMessage(ctx context.Context, key string, value []byte) (partition int32, offset int64, err error) {
+	ctx, span := startSpan(ctx, "SendMessage")
+	defer func() {
+		endSpan(span, err)
+	}()
 
-	return p.SyncProducer.SendMessage(&sarama.ProducerMessage{
+	partition, offset, err = p.SyncProducer.SendMessage(&sarama.ProducerMessage{
 		Topic: p.Topic(),
 		Key:   sarama.StringEncoder(key),
 		Value: sarama.ByteEncoder(value),
 	})
+
+	return
 }
 
 func (p *Producer) Close() (err error) {
