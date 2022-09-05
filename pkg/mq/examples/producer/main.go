@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"time"
 
 	kafka "github.com/teamgram/marmota/pkg/mq"
 )
@@ -32,7 +33,11 @@ func main() {
 		Brokers: []string{"127.0.0.1:9092"},
 	})
 
-	for i := 0; i < 10; i++ {
+	rt2 := time.Now()
+	for i := 0; i < 100000; i++ {
+		// rt := time.Now()
 		producer.SendMessage(context.Background(), "11", []byte(fmt.Sprintf("msg: %d", rand.Int())))
+		// fmt.Println("cost: ", time.Since(rt))
 	}
+	fmt.Println("cost: ", time.Since(rt2))
 }
