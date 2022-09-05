@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/teamgram/marmota/pkg/error2"
+
 	"github.com/Shopify/sarama"
 )
 
@@ -34,7 +36,8 @@ func MustKafkaProducer(c *KafkaProducerConf) *Producer {
 // NOTE: If producer has beed created failed, the message will lose.
 func (p *Producer) SendMessage(ctx context.Context, key string, value []byte) (partition int32, offset int64, err error) {
 	if len(value) == 0 {
-		return 0, 0, errors.New("len(value) == 0 ")
+		err = error2.Wrap(errors.New("len(value) == 0 "), "")
+		return
 	}
 
 	kMsg := &sarama.ProducerMessage{}
@@ -42,7 +45,10 @@ func (p *Producer) SendMessage(ctx context.Context, key string, value []byte) (p
 	kMsg.Key = sarama.StringEncoder(key)
 	kMsg.Value = sarama.ByteEncoder(value)
 	if kMsg.Key.Length() == 0 || kMsg.Value.Length() == 0 {
-		return -1, -1, errors.New("key or value == 0")
+		partition = -1
+		offset = -1
+		err = error2.Wrap(errors.New("key or value == 0"), "")
+		return
 	}
 
 	_, span := startSpan(ctx, "SendMessage")
@@ -51,7 +57,7 @@ func (p *Producer) SendMessage(ctx context.Context, key string, value []byte) (p
 	}()
 
 	partition, offset, err = p.producer.SendMessage(kMsg)
-
+	err = error2.Wrap(err, "")
 	return
 }
 
