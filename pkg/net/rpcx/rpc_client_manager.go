@@ -44,7 +44,7 @@ func GetCachedRpcClient(c zrpc.RpcClientConf) zrpc.Client {
 		val io.Closer
 		err error
 	)
-	if c.Etcd.Key == "" {
+	if c.Etcd.Key == "" && len(c.Endpoints) == 0 {
 		panic(c)
 	}
 	logx.Infof("client: %v", c)
