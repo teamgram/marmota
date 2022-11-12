@@ -20,6 +20,8 @@ package http_util
 
 import (
 	"bytes"
+	"fmt"
+	"github.com/zeromicro/go-zero/core/jsonx"
 	"io"
 	"net/http"
 	"strings"
@@ -42,6 +44,7 @@ func BindWithApiRequest(r *http.Request, req HttpApiMethod) error {
 	var (
 		b           binding.Binding
 		contentType = r.Header.Get("Content-Type")
+		// isJson      = false
 	)
 
 	if r.Method == "GET" {
@@ -58,18 +61,27 @@ func BindWithApiRequest(r *http.Request, req HttpApiMethod) error {
 		contentType = stripContentTypeParam(contentType)
 		switch contentType {
 		case binding.MIMEJSON:
+			// isJson = true
 			b = binding.JSON
-		case binding.MIMEXML, binding.MIMEXML2:
-			b = binding.XML
 		case binding.MIMEMultipartPOSTForm:
 			b = binding.FormMultipart
 		case binding.MIMEPOSTForm:
 			b = binding.FormPost
-		default: //case MIMEPOSTForm, MIMEMultipartPOSTForm:
-			b = binding.Form
+		default:
+			return fmt.Errorf("not support contentType: %s", contentType)
 		}
 	}
 
+	//if isJson {
+	//	err := b.Bind(r, req)
+	//	if err != nil {
+	//		logx.Errorf("bind form error: %v", err)
+	//		return err
+	//	} else {
+	//		d, _ := jsonx.MarshalToString(req)
+	//		logx.Infof("req(%v): %s", reflect.TypeOf(req), d)
+	//	}
+	//} else {
 	bindingReq := req.NewRequest()
 	err := b.Bind(r, bindingReq)
 	if err != nil {
@@ -83,8 +95,9 @@ func BindWithApiRequest(r *http.Request, req HttpApiMethod) error {
 		logx.Errorf("decode(%s) error: %v", bindingReq.Method(), err)
 		return err
 	}
-
-	logx.Infof("req(%s): %v", bindingReq.Method(), req)
+	d, _ := jsonx.MarshalToString(req)
+	logx.Infof("req(%s): %v", bindingReq.Method(), d)
+	//}
 
 	return nil
 }
