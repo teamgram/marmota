@@ -8,7 +8,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.1
-	github.com/zeromicro/go-zero v1.4.4-0.20221224132836-e8d3611b4ce9
+	github.com/zeromicro/go-zero v1.4.4-0.20221228065322-ce1c02f4f905
 	go.opentelemetry.io/otel v1.11.0
 	go.opentelemetry.io/otel/trace v1.11.0
 	go.uber.org/atomic v1.9.0
