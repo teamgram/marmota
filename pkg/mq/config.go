@@ -30,3 +30,10 @@ type KafkaConsumerConf struct {
 	Topics  []string
 	Group   string
 }
+
+// KafkaBatchConsumerConf kafka client settings.
+type KafkaBatchConsumerConf struct {
+	KafkaConsumerConf
+	Duration   int `json:",default=100"`
+	ChannelNum int `json:"default=50"`
+}

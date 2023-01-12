@@ -1,3 +1,21 @@
+// Copyright 2022 Teamgram Authors
+//  All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Author: teamgramio (teamgram.io@gmail.com)
+//
+
 /*
 ** description("").
 ** copyright('tuoyun,www.tuoyun.net').
@@ -9,10 +27,10 @@ package kafka
 
 import (
 	"context"
-	"github.com/zeromicro/go-zero/core/rescue"
 
 	"github.com/Shopify/sarama"
 	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/rescue"
 )
 
 type MessageHandlerF func(ctx context.Context, key string, value []byte)
@@ -28,15 +46,15 @@ type ConsumerGroup struct {
 
 func MustKafkaConsumer(c *KafkaConsumerConf) *ConsumerGroup {
 	config := sarama.NewConfig()
-	config.Version = sarama.V0_10_2_0
+	config.Version = sarama.V2_0_0_0
 	config.Consumer.Offsets.Initial = sarama.OffsetNewest
 	config.Consumer.Return.Errors = false
 
-	client, err := sarama.NewClient(c.Brokers, config)
+	cli, err := sarama.NewClient(c.Brokers, config)
 	if err != nil {
 		panic(err)
 	}
-	consumerGroup, err := sarama.NewConsumerGroupFromClient(c.Group, client)
+	consumerGroup, err := sarama.NewConsumerGroupFromClient(c.Group, cli)
 	if err != nil {
 		panic(err)
 	}
