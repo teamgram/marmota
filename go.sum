@@ -2340,8 +2340,8 @@ github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07/go.mod h1:kDXzergiv9cb
 github.com/tchap/go-patricia v2.2.6+incompatible/go.mod h1:bmLyhP68RS6kStMGxByiQ23RP/odRBOTVjwp2cDyi6I=
 github.com/tdakkota/asciicheck v0.0.0-20200416190851-d7f85be797a2/go.mod h1:yHp0ai0Z9gUljN3o0xMhYJnH/IcvkdTBOX2fmJ93JEM=
 github.com/tdakkota/asciicheck v0.0.0-20200416200610-e657995f937b/go.mod h1:yHp0ai0Z9gUljN3o0xMhYJnH/IcvkdTBOX2fmJ93JEM=
-github.com/teamgram/go-zero v0.0.0-20230114113822-1a974c8969c3 h1:dM7TTfS/X1I/4kVQ+KhvU1+07Qcvez3bz0yvHTL+U4c=
-github.com/teamgram/go-zero v0.0.0-20230114113822-1a974c8969c3/go.mod h1:QE7pdcGS5Vahhy+e8dQfY0gadPWRsTPQGAAQTCT3ngw=
+github.com/teamgram/go-zero v0.0.0-20230114122314-a2623fbc1ead h1:EfneKGs0sCEDkDv31jAk+wZDQraezON0OJqgYXJmQn8=
+github.com/teamgram/go-zero v0.0.0-20230114122314-a2623fbc1ead/go.mod h1:QE7pdcGS5Vahhy+e8dQfY0gadPWRsTPQGAAQTCT3ngw=
 github.com/tenntenn/modver v1.0.1/go.mod h1:bePIyQPb7UeioSRkw3Q0XeMhYZSMx9B8ePqg6SAMGH0=
 github.com/tenntenn/text/transform v0.0.0-20200319021203-7eef512accb3/go.mod h1:ON8b8w4BN/kE1EOhwT0o+d62W65a6aPw1nouo9LMgyY=
 github.com/tetafro/godot v0.3.7/go.mod h1:/7NLHhv08H1+8DNj0MElpAACw1ajsCuf3TKNQxA5S+0=
