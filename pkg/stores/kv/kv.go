@@ -15,6 +15,7 @@ type (
 	KvConf    = kv.KvConf
 	Pipeline  = kv.Pipeline
 	Pipeliner = kv.Pipeliner
+	Store     = kv.Store
 
 	// IntCmd is an alias of redis.IntCmd.
 	IntCmd = redis.IntCmd
