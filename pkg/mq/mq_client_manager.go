@@ -19,8 +19,9 @@
 package kafka
 
 import (
-	"github.com/zeromicro/go-zero/core/syncx"
 	"io"
+
+	"github.com/zeromicro/go-zero/core/syncx"
 )
 
 var (

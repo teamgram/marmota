@@ -23,8 +23,8 @@ func main() {
 	conf.MustLoad("./kv.yaml", &c)
 
 	dIdList := []string{
-		"document_1572598612301451270",
-		"document_1572599736324591618",
+		"tm_1572598612301451270",
+		"tm_1572599736324591618",
 	}
 
 	kv2 := kv.NewStore(c.KV)

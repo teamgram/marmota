@@ -32,7 +32,9 @@ type (
 	// PrimaryQueryFn defines the query method that based on primary keys.
 	PrimaryQueryFn func(ctx context.Context, conn *sqlx.DB, v, primary interface{}) error
 	// QueryFn defines the query method.
-	QueryFn func(ctx context.Context, conn *sqlx.DB, v interface{}) error
+	QueryFn     func(ctx context.Context, conn *sqlx.DB, v interface{}) error
+	KeysQueryFn func(ctx context.Context, conn *sqlx.DB, keys ...string) (map[string]interface{}, error)
+	CacheFn     func(k, v string) (interface{}, error)
 
 	// A CachedConn is a DB connection with cache capability.
 	CachedConn struct {
@@ -93,6 +95,17 @@ func (cc CachedConn) QueryRow(ctx context.Context, v interface{}, key string, qu
 	return cc.cache.TakeCtx(ctx, v, key, func(v interface{}) error {
 		return query(ctx, cc.db, v)
 	})
+}
+
+// QueryRows unmarshals into v with given key and query func.
+func (cc CachedConn) QueryRows(ctx context.Context, query KeysQueryFn, calVal CacheFn, keys ...string) error {
+	return cc.cache.TakesCtx(
+		ctx,
+		func(keys ...string) (map[string]interface{}, error) {
+			return query(ctx, cc.db, keys...)
+		},
+		calVal,
+		keys...)
 }
 
 // QueryRowIndex unmarshals into v with given key.
