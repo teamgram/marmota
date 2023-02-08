@@ -67,6 +67,7 @@ type Cmd2Value struct {
 }
 
 type BatchMessageHandlerF func(ctx context.Context, msgs MsgChannelValue)
+type BatchAggregationIdListHandlerF func(triggerID string, idList []string)
 
 // BatchConsumerGroup kafka consumer
 type BatchConsumerGroup struct {
@@ -74,7 +75,8 @@ type BatchConsumerGroup struct {
 	c                 *KafkaConsumerConf
 	chArrays          [ChannelNum]chan Cmd2Value
 	msgDistributionCh chan Cmd2Value
-	cb                BatchMessageHandlerF
+	cb                BatchAggregationIdListHandlerF
+	cb2               BatchMessageHandlerF
 }
 
 func MustKafkaBatchConsumer(c *KafkaConsumerConf) *BatchConsumerGroup {
@@ -113,8 +115,8 @@ func (c *BatchConsumerGroup) Run(channelID int) {
 		case cmd := <-c.chArrays[channelID]:
 			switch cmd.Cmd {
 			case AggregationMessages:
-				if c.cb != nil {
-					c.cb(context.Background(), cmd.Value.(MsgChannelValue))
+				if c.cb2 != nil {
+					c.cb2(context.Background(), cmd.Value.(MsgChannelValue))
 				}
 			}
 		}
@@ -131,18 +133,15 @@ func (c *BatchConsumerGroup) MessagesDistributionHandle() {
 				triggerChannelValue := cmd.Value.(TriggerChannelValue)
 				triggerID := triggerChannelValue.triggerID
 				consumerMessages := triggerChannelValue.cMsgList
+				aggregationIDList := make([]string, 0, len(triggerChannelValue.cMsgList))
+
 				//Aggregation map[userid]message list
 				logx.Debug(triggerID, "batch messages come to distribution center", len(consumerMessages))
 				for i := 0; i < len(consumerMessages); i++ {
 					msgFromMQ := MsgDataToMQ{
 						MsgData: consumerMessages[i].Value,
 					}
-					//err := json.Unmarshal(consumerMessages[i].Value, &msgFromMQ)
-					//if err != nil {
-					//	logx.Error(triggerID, "msg_transfer Unmarshal msg err", "msg", string(consumerMessages[i].Value), "err", err.Error())
-					//	return
-					//}
-					//logx.Debug(triggerID, "single msg come to distribution center", msgFromMQ, string(consumerMessages[i].Key))
+					aggregationIDList = append(aggregationIDList, string(consumerMessages[i].Key))
 					if oldM, ok := aggregationMsgs[string(consumerMessages[i].Key)]; ok {
 						oldM = append(oldM, &msgFromMQ)
 						aggregationMsgs[string(consumerMessages[i].Key)] = oldM
@@ -152,12 +151,17 @@ func (c *BatchConsumerGroup) MessagesDistributionHandle() {
 						aggregationMsgs[string(consumerMessages[i].Key)] = m
 					}
 				}
-				logx.Debug(triggerID, "generate map list users len", len(aggregationMsgs))
+
+				if c.cb != nil {
+					c.cb(triggerID, aggregationIDList)
+				}
+
+				logx.Debug(triggerID, " - generate map list users len: ", len(aggregationMsgs))
 				for aggregationID, v := range aggregationMsgs {
 					if len(v) >= 0 {
 						hashCode := getHashCode(aggregationID)
 						channelID := hashCode % ChannelNum
-						logx.Debug(triggerID, "generate channelID", hashCode, channelID, aggregationID)
+						logx.Debugf("triggerID(%d) - generate channelID, {hashCode: %d, channelID: %d, aggregationID: %d)", triggerID, hashCode, channelID, aggregationID)
 						c.chArrays[channelID] <- Cmd2Value{Cmd: AggregationMessages, Value: MsgChannelValue{AggregationID: aggregationID, MsgList: v, TriggerID: triggerID}}
 					}
 				}
@@ -193,14 +197,14 @@ func OperationIDGenerator() string {
 func (c *BatchConsumerGroup) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for {
 		if sess == nil {
-			logx.Info("", " sess == nil, waiting ")
+			logx.Info(" sess == nil, waiting ")
 			time.Sleep(100 * time.Millisecond)
 		} else {
 			break
 		}
 	}
 	rwLock := new(sync.RWMutex)
-	logx.Debugf("", "online new session msg come", claim.HighWaterMarkOffset(), claim.Topic(), claim.Partition())
+	logx.Infof("online new session msg come", claim.HighWaterMarkOffset(), claim.Topic(), claim.Partition())
 	cMsg := make([]*sarama.ConsumerMessage, 0, 1000)
 	t := time.NewTicker(time.Duration(100) * time.Millisecond)
 	var triggerID string
@@ -218,7 +222,7 @@ func (c *BatchConsumerGroup) ConsumeClaim(sess sarama.ConsumerGroupSession, clai
 					rwLock.Unlock()
 					split := 1000
 					triggerID = OperationIDGenerator()
-					logx.Debug(triggerID, "timer trigger msg consumer start", len(ccMsg))
+					logx.Info(triggerID, " - timer trigger msg consumer start, len(msg) is ", len(ccMsg))
 					for i := 0; i < len(ccMsg)/split; i++ {
 						//log.Debug()
 						c.msgDistributionCh <- Cmd2Value{Cmd: ConsumerMsgs, Value: TriggerChannelValue{
@@ -230,7 +234,7 @@ func (c *BatchConsumerGroup) ConsumeClaim(sess sarama.ConsumerGroupSession, clai
 					}
 					//sess.MarkMessage(ccMsg[len(cMsg)-1], "")
 
-					logx.Debug(triggerID, "timer trigger msg consumer end", len(cMsg))
+					logx.Info(triggerID, " - timer trigger msg consumer end, len(msg) is ", len(cMsg))
 				}
 			}
 		}
@@ -248,8 +252,9 @@ func (c *BatchConsumerGroup) ConsumeClaim(sess sarama.ConsumerGroupSession, clai
 	return nil
 }
 
-func (c *BatchConsumerGroup) RegisterHandlers(cb BatchMessageHandlerF) {
+func (c *BatchConsumerGroup) RegisterHandlers(cb BatchAggregationIdListHandlerF, cb2 BatchMessageHandlerF) {
 	c.cb = cb
+	c.cb2 = cb2
 }
 
 // Start start consume messages, watch signals
