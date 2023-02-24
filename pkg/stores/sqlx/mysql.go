@@ -21,9 +21,11 @@ package sqlx
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
 var (
@@ -32,11 +34,13 @@ var (
 
 // Config mysql config.
 type Config struct {
-	DSN         string   // write data source name.
-	ReadDSN     []string `json:",optional"` // read data source name.
-	Active      int      `json:",optional"` // pool
-	Idle        int      `json:",optional"` // pool
-	IdleTimeout string   `json:",optional"` // connect max life time.
+	DSN            string   // write data source name.
+	ReadDSN        []string `json:",optional"` // read data source name.
+	Active         int      `json:",optional"` // pool
+	Idle           int      `json:",optional"` // pool
+	IdleTimeout    string   `json:",optional"` // connect max life time.
+	DisableStmtLog bool     `json:",default=false"`
+	SlowThreshold  int64    `json:",default=500"`
 }
 
 // NewMySQL new db and retry connection when has error.
@@ -46,6 +50,15 @@ func NewMySQL(c *Config) (db *DB) {
 		logx.Error("open mysql error(%v)", err)
 		panic(err)
 	}
+
+	if c.DisableStmtLog {
+		sqlx.DisableStmtLog()
+	}
+
+	if c.SlowThreshold > 500 {
+		sqlx.SetSlowThreshold(time.Duration(c.SlowThreshold) * time.Millisecond)
+	}
+
 	return
 }
 
