@@ -21,14 +21,12 @@ package http_util
 import (
 	"bytes"
 	"fmt"
-	"github.com/zeromicro/go-zero/core/jsonx"
 	"io"
 	"net/http"
 	"strings"
 
+	"github.com/teamgram/marmota/pkg/logx"
 	"github.com/teamgram/marmota/pkg/net/http/binding"
-
-	"github.com/zeromicro/go-zero/core/logx"
 )
 
 type HttpApiRequest interface {
@@ -44,7 +42,7 @@ func BindWithApiRequest(r *http.Request, req HttpApiMethod) error {
 	var (
 		b           binding.Binding
 		contentType = r.Header.Get("Content-Type")
-		// isJson      = false
+		logger      = logx.WithContext(r.Context())
 	)
 
 	if r.Method == "GET" {
@@ -61,8 +59,7 @@ func BindWithApiRequest(r *http.Request, req HttpApiMethod) error {
 		contentType = stripContentTypeParam(contentType)
 		switch contentType {
 		case binding.MIMEJSON:
-			// isJson = true
-			b = binding.JSON
+			b = binding.FASTJSON
 		case binding.MIMEMultipartPOSTForm:
 			b = binding.FormMultipart
 		case binding.MIMEPOSTForm:
@@ -72,32 +69,21 @@ func BindWithApiRequest(r *http.Request, req HttpApiMethod) error {
 		}
 	}
 
-	//if isJson {
-	//	err := b.Bind(r, req)
-	//	if err != nil {
-	//		logx.Errorf("bind form error: %v", err)
-	//		return err
-	//	} else {
-	//		d, _ := jsonx.MarshalToString(req)
-	//		logx.Infof("req(%v): %s", reflect.TypeOf(req), d)
-	//	}
-	//} else {
 	bindingReq := req.NewRequest()
 	err := b.Bind(r, bindingReq)
 	if err != nil {
-		logx.Errorf("bind form error: %v", err)
+		logger.Errorf("bind form error: %v", err)
 		return err
 	} else {
-		logx.Infof("bindingReq: %v", bindingReq)
+		logger.Debugf("bindingReq(%s): %s", bindingReq.Method(), logx.DebugLogString(bindingReq))
 	}
 
 	if err = req.Decode2(r, contentType, bindingReq); err != nil {
-		logx.Errorf("decode(%s) error: %v", bindingReq.Method(), err)
+		logger.Errorf("decode(%s) error: %v", bindingReq.Method(), err)
 		return err
 	}
-	d, _ := jsonx.MarshalToString(req)
-	logx.Infof("req(%s): %v", bindingReq.Method(), d)
-	//}
+
+	logger.Infof("req(%s): %s", bindingReq.Method(), logx.DebugLogString(req))
 
 	return nil
 }
@@ -105,7 +91,6 @@ func BindWithApiRequest(r *http.Request, req HttpApiMethod) error {
 func GetUploadFile(c *http.Request, key string) (fileName string, file []byte, err error) {
 	file2, fileHeader, err2 := c.FormFile(key)
 	if err2 != nil {
-		// logx.Infof("upload.wall_paper.file.illegal,err::%v", err2.Error())
 		err = err2
 		return
 	}

@@ -48,6 +48,7 @@ var Validator StructValidator = &defaultValidator{}
 // Binding
 var (
 	JSON          = jsonBinding{}
+	FASTJSON      = fastjsonBinding{}
 	XML           = xmlBinding{}
 	Form          = formBinding{}
 	Query         = queryBinding{}
