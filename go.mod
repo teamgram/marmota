@@ -9,7 +9,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.1
 	github.com/valyala/fastjson v1.6.4
-	github.com/zeromicro/go-zero v1.4.4
+	github.com/zeromicro/go-zero v1.4.5
 	go.opentelemetry.io/otel v1.11.0
 	go.opentelemetry.io/otel/trace v1.11.0
 	go.uber.org/atomic v1.9.0
@@ -133,4 +133,4 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-replace github.com/zeromicro/go-zero v1.4.4 => github.com/teamgram/go-zero v0.0.0-20230204142416-10f689223dcc
+replace github.com/zeromicro/go-zero v1.4.5 => github.com/teamgram/go-zero v0.0.0-20230306003356-c022121e731f
