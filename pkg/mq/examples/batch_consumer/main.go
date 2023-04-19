@@ -35,11 +35,15 @@ func main() {
 		Group:   "teamgram-test-group-job",
 	})
 
-	job.RegisterHandlers(func(ctx context.Context, value kafka.MsgChannelValue) {
-		for _, msg := range value.MsgList {
-			fmt.Println("AggregationID: ", value.AggregationID, ", TriggerID: ", value.TriggerID, ", Msg: ", string(msg.MsgData))
-		}
-	})
+	job.RegisterHandlers(
+		func(triggerID string, idList []string) {
+			fmt.Println("triggerID: ", triggerID, ", idList: ", idList)
+		},
+		func(ctx context.Context, value kafka.MsgChannelValue) {
+			for _, msg := range value.MsgList {
+				fmt.Println("AggregationID: ", value.AggregationID, ", TriggerID: ", value.TriggerID, ", Msg: ", string(msg.MsgData))
+			}
+		})
 
 	defer job.Stop()
 	go job.Start()

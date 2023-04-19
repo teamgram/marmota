@@ -14,4 +14,7 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
-/pkg/commands/examples/logs/
+pkg/commands/examples/logs/
+pkg/mq/examples/batch_consumer/batch_consumer
+pkg/mq/examples/consumer/consumer
+pkg/mq/examples/producer/producer

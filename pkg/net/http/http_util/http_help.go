@@ -59,7 +59,8 @@ func BindWithApiRequest(r *http.Request, req HttpApiMethod) error {
 		contentType = stripContentTypeParam(contentType)
 		switch contentType {
 		case binding.MIMEJSON:
-			b = binding.FASTJSON
+			// b = binding.FASTJSON
+			b = binding.JSON
 		case binding.MIMEMultipartPOSTForm:
 			b = binding.FormMultipart
 		case binding.MIMEPOSTForm:

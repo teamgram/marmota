@@ -22,9 +22,12 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"time"
 
+	"github.com/teamgram/marmota/pkg/hack"
 	kafka "github.com/teamgram/marmota/pkg/mq"
+	"github.com/zeromicro/go-zero/core/mr"
 )
 
 func main() {
@@ -34,10 +37,21 @@ func main() {
 	})
 
 	rt2 := time.Now()
-	for i := 0; i < 100000; i++ {
-		// rt := time.Now()
-		producer.SendMessage(context.Background(), "11", []byte(fmt.Sprintf("msg: %d", rand.Int())))
-		// fmt.Println("cost: ", time.Since(rt))
-	}
+	mr.ForEach(
+		func(source chan<- interface{}) {
+			for i := 0; i < 100; i++ {
+				source <- i
+			}
+		},
+		func(item interface{}) {
+			for i := 0; i < 10000; i++ {
+				v := strconv.FormatInt(rand.Int63(), 10)
+				_, _, err := producer.SendMessage(context.Background(), "11", hack.Bytes(v))
+				if err != nil {
+					fmt.Println("error - ", err)
+				}
+			}
+		},
+		mr.WithWorkers(100))
 	fmt.Println("cost: ", time.Since(rt2))
 }
