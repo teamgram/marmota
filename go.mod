@@ -135,4 +135,4 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-replace github.com/zeromicro/go-zero v1.4.5 => github.com/teamgram/go-zero v0.0.0-20230306003356-c022121e731f
+replace github.com/zeromicro/go-zero v1.4.5 => github.com/teamgram/go-zero v0.0.0-20230507122319-e160d05ace41
