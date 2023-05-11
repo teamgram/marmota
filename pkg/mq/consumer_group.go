@@ -30,7 +30,6 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/zeromicro/go-zero/core/logx"
-	"github.com/zeromicro/go-zero/core/rescue"
 )
 
 type MessageHandlerF func(ctx context.Context, key string, value []byte)
@@ -96,20 +95,18 @@ func (c *ConsumerGroup) ConsumeClaim(session sarama.ConsumerGroupSession, claim 
 	// The `ConsumeClaim` itself is called within a goroutine, see:
 	// https://github.com/Shopify/sarama/blob/main/consumer_group.go#L27-L29
 	for message := range claim.Messages() {
-		// log.Printf("Message claimed: value = %s, timestamp = %v, topic = %s", string(message.Value), message.Timestamp, message.Topic)
-		// c.cb[message.Topic](context.Background(), string(message.Key), message.Value)
-		c.consumeMessage(session, message)
+		// logx.Debugf("Message claimed: value = %s, timestamp = %v, topic = %s", string(message.Value), message.Timestamp, message.Topic)
+
+		if len(message.Value) != 0 {
+			c.cb[message.Topic](context.Background(), string(message.Key), message.Value)
+		} else {
+			logx.Errorf("message(%v) get from kafka but is nil", message.Key)
+		}
+
+		session.MarkMessage(message, "")
 	}
 
 	return nil
-}
-
-func (c *ConsumerGroup) consumeMessage(session sarama.ConsumerGroupSession, message *sarama.ConsumerMessage) {
-	defer rescue.Recover(func() {
-		session.MarkMessage(message, "")
-	})
-
-	c.cb[message.Topic](context.Background(), string(message.Key), message.Value)
 }
 
 func (c *ConsumerGroup) RegisterHandlers(topic string, cb MessageHandlerF) {
