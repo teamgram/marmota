@@ -20,47 +20,65 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
+	"flag"
 
+	"github.com/teamgram/marmota/pkg/commands"
 	kafka "github.com/teamgram/marmota/pkg/mq"
+
+	"github.com/zeromicro/go-zero/core/conf"
+	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/service"
+	"github.com/zeromicro/go-zero/zrpc"
 )
 
-func main() {
-	job := kafka.MustKafkaBatchConsumer(&kafka.KafkaConsumerConf{
-		Topics:  []string{"teamgram-test-topic"},
-		Brokers: []string{"127.0.0.1:9092"},
-		Group:   "teamgram-test-group-job",
-	})
+var configFile = flag.String("f", "c.yaml", "the config file")
 
-	job.RegisterHandlers(
+type Config struct {
+	service.ServiceConf
+	TestConsumer kafka.KafkaConsumerConf
+}
+
+type Server struct {
+	grpcSrv *zrpc.RpcServer
+	mq      *kafka.BatchConsumerGroup
+}
+
+func New() *Server {
+	return new(Server)
+}
+
+func (s *Server) Initialize() error {
+	var c Config
+	conf.MustLoad(*configFile, &c)
+	logx.SetUp(c.Log)
+
+	logx.Infov(c)
+	mq := kafka.MustKafkaBatchConsumer(&c.TestConsumer)
+
+	mq.RegisterHandlers(
 		func(triggerID string, idList []string) {
-			fmt.Println("triggerID: ", triggerID, ", idList: ", idList)
+			logx.Debug("triggerID: ", triggerID, ", idList: ", len(idList))
 		},
 		func(ctx context.Context, value kafka.MsgChannelValue) {
 			for _, msg := range value.MsgList {
-				fmt.Println("AggregationID: ", value.AggregationID, ", TriggerID: ", value.TriggerID, ", Msg: ", string(msg.MsgData))
+				logx.Debug("AggregationID: ", value.AggregationID, ", TriggerID: ", value.TriggerID, ", Msg: ", string(msg.MsgData))
 			}
 		})
 
-	defer job.Stop()
-	go job.Start()
-	// signal
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
-	for {
-		s := <-c
-		fmt.Println("get a signal ", s.String())
-		switch s {
-		case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT:
-			// job.Close()
-			fmt.Println("exit...")
-			return
-		case syscall.SIGHUP:
-		default:
-			return
-		}
-	}
+	s.mq = mq
+	go s.mq.Start()
+
+	return nil
+}
+
+func (s *Server) RunLoop() {
+}
+
+func (s *Server) Destroy() {
+	s.mq.Stop()
+	s.grpcSrv.Stop()
+}
+
+func main() {
+	commands.Run(New())
 }
