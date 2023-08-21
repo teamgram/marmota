@@ -21,13 +21,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"math/rand"
-	"strconv"
-	"time"
-
 	"github.com/teamgram/marmota/pkg/hack"
 	kafka "github.com/teamgram/marmota/pkg/mq"
-	"github.com/zeromicro/go-zero/core/mr"
+	"math/rand"
+	"strconv"
 )
 
 func main() {
@@ -36,22 +33,36 @@ func main() {
 		Brokers: []string{"127.0.0.1:9092"},
 	})
 
-	rt2 := time.Now()
-	mr.ForEach(
-		func(source chan<- interface{}) {
-			for i := 0; i < 100; i++ {
-				source <- i
-			}
-		},
-		func(item interface{}) {
-			for i := 0; i < 10000; i++ {
-				v := strconv.FormatInt(rand.Int63(), 10)
-				_, _, err := producer.SendMessage(context.Background(), "11", hack.Bytes(v))
-				if err != nil {
-					fmt.Println("error - ", err)
-				}
-			}
-		},
-		mr.WithWorkers(100))
-	fmt.Println("cost: ", time.Since(rt2))
+	// rt2 := time.Now()
+	//mr.ForEach(
+	//	func(source chan<- interface{}) {
+	//		for i := 0; i < 100; i++ {
+	//			source <- i
+	//		}
+	//	},
+	//	func(item interface{}) {
+	//		for i := 0; i < 10000; i++ {
+	//			v := strconv.FormatInt(rand.Int63(), 10)
+	//			_, _, err := producer.SendMessage(context.Background(), "sync.TL_sync_pushUpdates#136817694#"+strconv.FormatInt(int64(i), 10), hack.Bytes(v))
+	//			if err != nil {
+	//				fmt.Println("error - ", err)
+	//			}
+	//		}
+	//	},
+	//	mr.WithWorkers(100))
+	i := 0
+
+	for {
+		k := "sync.TL_sync_pushUpdates#136817694#" + strconv.FormatInt(int64(i), 10)
+		v := strconv.FormatInt(rand.Int63(), 10)
+		_, _, err := producer.SendMessage(context.Background(), k, hack.Bytes(v))
+		if err != nil {
+			fmt.Println("error - ", err)
+		}
+		fmt.Println("k:", k, "v:", v)
+		i = i + 1
+		// time.Sleep(100 * time.Millisecond)
+	}
+
+	// fmt.Println("cost: ", time.Since(rt2))
 }
