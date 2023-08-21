@@ -16,7 +16,8 @@
 # vendor/
 pkg/commands/examples/logs/
 pkg/mq/examples/batch_consumer/batch_consumer
-pkg/mq/examples/batch_consumer/log
-!pkg/mq/examples/batch_consumer/log/.gitkeeper
 pkg/mq/examples/consumer/consumer
 pkg/mq/examples/producer/producer
+
+pkg/mq/examples/batch_consumer/log/*
+!pkg/mq/examples/batch_consumer/log/.gitkeeper
