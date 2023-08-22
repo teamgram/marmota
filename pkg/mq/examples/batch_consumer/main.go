@@ -21,6 +21,7 @@ package main
 import (
 	"context"
 	"flag"
+	"time"
 
 	"github.com/teamgram/marmota/pkg/commands"
 	kafka "github.com/teamgram/marmota/pkg/mq"
@@ -61,6 +62,7 @@ func (s *Server) Initialize() error {
 		},
 		func(ctx context.Context, value kafka.MsgChannelValue) {
 			for _, msg := range value.MsgList {
+				time.Sleep(time.Millisecond)
 				logx.Debug("AggregationID: ", value.AggregationID, ", TriggerID: ", value.TriggerID, ", Msg: ", string(msg.MsgData))
 			}
 		})
