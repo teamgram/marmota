@@ -37,3 +37,10 @@ type KafkaBatchConsumerConf struct {
 	Duration   int `json:",default=100"`
 	ChannelNum int `json:"default=50"`
 }
+
+type KafkaShardingConsumerConf struct {
+	KafkaConsumerConf
+	Concurrency int    `json:",default=2048"`
+	QueueBuffer int    `json:",default=128"`
+	ClientId    string `json:",default=sarama"`
+}

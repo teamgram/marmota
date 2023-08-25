@@ -1,0 +1,13 @@
+Name: c
+Log:
+  ServiceName: c
+  Mode: file
+  Path: ./log
+  Level: debug
+
+TestConsumer:
+  Topics:
+    - "teamgram-test-topic"
+  Brokers:
+    - 127.0.0.1:9092
+  Group: "teamgram-test-group-job"

@@ -1,8 +1,27 @@
+// Copyright 2023 Teamgram Authors
+//  All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Author: teamgramio (teamgram.io@gmail.com)
+//
+
 package kafka
 
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/teamgram/marmota/pkg/error2"
 
@@ -11,6 +30,12 @@ import (
 
 // spanName is used to identify the span name for the SQL execution.
 const spanName = "kafka.producer"
+
+const (
+	maxRetry = 10 // number of retries
+)
+
+var errEmptyMsg = errors.New("binary msg is empty")
 
 type Producer struct {
 	producer sarama.SyncProducer
@@ -24,11 +49,24 @@ func MustKafkaProducer(c *KafkaProducerConf) *Producer {
 	kc.Producer.RequiredAcks = sarama.WaitForAll        //Set producer Message Reply level 0 1 all
 	kc.Producer.Partitioner = sarama.NewHashPartitioner //Set the hash-key automatic hash partition. When sending a message, you must specify the key value of the message. If there is no key, the partition will be selected randomly
 
-	pub, err := sarama.NewSyncProducer(c.Brokers, kc)
+	var (
+		producer sarama.SyncProducer
+		err      error
+	)
+
+	for i := 0; i <= maxRetry; i++ {
+		producer, err = sarama.NewSyncProducer(c.Brokers, kc) // Initialize the client
+		if err == nil {
+			break
+		}
+
+		time.Sleep(time.Duration(1) * time.Second)
+	}
 	if err != nil {
 		panic(err)
 	}
-	return &Producer{pub, c}
+
+	return &Producer{producer, c}
 }
 
 // SendMessage
