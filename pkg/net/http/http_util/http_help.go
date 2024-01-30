@@ -20,6 +20,7 @@ package http_util
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -65,8 +66,7 @@ func BindWithApiRequest(r *http.Request, req HttpApiMethod) error {
 		case binding.MIMEPOSTForm:
 			b = binding.FormPost
 		default:
-			b = binding.FormPost
-			// return fmt.Errorf("not support contentType: %s", contentType)
+			return fmt.Errorf("not support contentType: %s", contentType)
 		}
 	}
 
