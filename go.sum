@@ -239,8 +239,8 @@ github.com/stretchr/testify v1.8.2/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
-github.com/teamgram/go-zero v1.6.3-teamgram h1:oJSYoDgwmWUF8fO3HZrXsAh9GoWPBj9Ls/grOSMLv2E=
-github.com/teamgram/go-zero v1.6.3-teamgram/go.mod h1:I90LWzrHQLRobJcWP0KR8xG8xS2oubRTC5R4HgJyThY=
+github.com/teamgram/go-zero v1.6.3-teamgram.0.20240501021520-e02614df0dd3 h1:WD73XH2teULID61O2XXLW+TISLRSAOWSFTIO9fwh0Yg=
+github.com/teamgram/go-zero v1.6.3-teamgram.0.20240501021520-e02614df0dd3/go.mod h1:I90LWzrHQLRobJcWP0KR8xG8xS2oubRTC5R4HgJyThY=
 github.com/valyala/fastjson v1.6.4 h1:uAUNq9Z6ymTgGhcm0UynUAB6tlbakBrz6CQFax3BXVQ=
 github.com/valyala/fastjson v1.6.4/go.mod h1:CLCAqky6SMuOcxStkYQvblddUtoRxhYMGLrsQns1aXY=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=

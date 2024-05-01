@@ -23,8 +23,8 @@ type (
 	FloatCmd = redis.FloatCmd
 	// StringCmd is an alias of redis.StringCmd.
 	StringCmd = redis.StringCmd
-	// StringStringMapCmd is an alias of redis.StringStringMapCmd.
-	StringStringMapCmd = redis.StringStringMapCmd
+	// MapStringStringCmd is an alias of redis.MapStringStringCmd.
+	MapStringStringCmd = redis.MapStringStringCmd
 )
 
 var (
