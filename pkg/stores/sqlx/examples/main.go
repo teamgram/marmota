@@ -20,6 +20,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/teamgram/marmota/pkg/stores/sqlx"
@@ -144,7 +145,7 @@ func QueryRow(db *sqlx.DB) {
 	fmt.Println(v1)
 
 	err = db.QueryRow(context.Background(), v1, "SELECT * FROM message1 WHERE id = 10")
-	if err != nil && err != sqlx.ErrNoRows {
+	if err != nil && !errors.Is(err, sqlx.ErrNotFound) {
 		logx.Errorf("query error - %v", err)
 		// return
 	}
@@ -200,9 +201,9 @@ func In(db *sqlx.DB) {
 }
 
 func Tx(db *sqlx.DB) {
-	sqlx.TxWrapper(db, context.Background(), func(ctx context.Context, tx *sqlx.Tx) error {
-		tx.Exec(ctx, "INSERT INTO message1 (message_id, data2, state, deleted) VALUES(1000, '1000', 0, 0)")
-		return nil
+	sqlx.TxWrapper(context.Background(), db, func(tx *sqlx.Tx, result *sqlx.StoreResult) {
+		tx.Exec("INSERT INTO message1 (message_id, data2, state, deleted) VALUES(1000, '1000', 0, 0)")
+		return
 	})
 	//db.Master().
 	//tx, err := db.Begin(context.Background())
@@ -276,15 +277,14 @@ func TxNamedExec(db *sqlx.DB) {
 		Deleted:   false,
 	}
 
-	sqlx.TxWrapper(db, context.Background(), func(ctx context.Context, tx *sqlx.Tx) error {
+	sqlx.TxWrapper(context.Background(), db, func(tx *sqlx.Tx, result *sqlx.StoreResult) {
 		_, err := tx.NamedExec(
-			ctx,
 			"INSERT INTO message1 (message_id, data2, state, deleted) VALUES(:message_id, :data2, :state, :deleted)",
 			v1)
 		if err != nil {
 			fmt.Println(err)
 		}
-		return err
+		return
 	})
 }
 
