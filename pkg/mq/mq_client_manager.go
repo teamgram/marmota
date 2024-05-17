@@ -28,14 +28,6 @@ var (
 	clientManager = syncx.NewResourceManager()
 )
 
-type client struct {
-	*Producer
-}
-
-//func (c *client) Close() error {
-//	return nil
-//}
-
 func GetCachedMQClient(c *KafkaProducerConf) *Producer {
 	var (
 		val io.Closer

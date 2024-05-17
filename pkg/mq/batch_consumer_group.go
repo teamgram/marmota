@@ -33,8 +33,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/zeromicro/go-zero/core/logx"
+	ztrace "github.com/zeromicro/go-zero/core/trace"
+	"go.opentelemetry.io/otel/codes"
+	gcodes "google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -43,16 +47,15 @@ const (
 	ChannelNum          = 100
 )
 
-type MsgDataToMQ struct {
-	TraceId string
-	MsgType string
+type MsgDataToMQCtx struct {
+	Ctx     context.Context
 	MsgData []byte
 }
 
 type MsgChannelValue struct {
 	AggregationID string //maybe userID or super groupID
 	TriggerID     string
-	MsgList       []*MsgDataToMQ
+	MsgList       []*MsgDataToMQCtx
 	// lastSeq       uint64
 }
 
@@ -66,7 +69,7 @@ type Cmd2Value struct {
 	Value interface{}
 }
 
-type BatchMessageHandlerF func(ctx context.Context, msgs MsgChannelValue)
+type BatchMessageHandlerF func(msgs MsgChannelValue)
 type BatchAggregationIdListHandlerF func(triggerID string, idList []string)
 
 // BatchConsumerGroup kafka consumer
@@ -116,7 +119,7 @@ func (c *BatchConsumerGroup) Run(channelID int) {
 			switch cmd.Cmd {
 			case AggregationMessages:
 				if c.cb2 != nil {
-					c.cb2(context.Background(), cmd.Value.(MsgChannelValue))
+					c.cb2(cmd.Value.(MsgChannelValue))
 				}
 			}
 		}
@@ -125,7 +128,7 @@ func (c *BatchConsumerGroup) Run(channelID int) {
 
 func (c *BatchConsumerGroup) MessagesDistributionHandle() {
 	for {
-		aggregationMsgs := make(map[string][]*MsgDataToMQ, ChannelNum)
+		aggregationMsgs := make(map[string][]*MsgDataToMQCtx, ChannelNum)
 		select {
 		case cmd := <-c.msgDistributionCh:
 			switch cmd.Cmd {
@@ -138,7 +141,8 @@ func (c *BatchConsumerGroup) MessagesDistributionHandle() {
 				//Aggregation map[userid]message list
 				logx.Debug(triggerID, "batch messages come to distribution center", len(consumerMessages))
 				for i := 0; i < len(consumerMessages); i++ {
-					msgFromMQ := MsgDataToMQ{
+					msgFromMQ := MsgDataToMQCtx{
+						Ctx:     injectTraceHeaders(consumerMessages[i].Headers),
 						MsgData: consumerMessages[i].Value,
 					}
 					aggregationIDList = append(aggregationIDList, string(consumerMessages[i].Key))
@@ -146,7 +150,7 @@ func (c *BatchConsumerGroup) MessagesDistributionHandle() {
 						oldM = append(oldM, &msgFromMQ)
 						aggregationMsgs[string(consumerMessages[i].Key)] = oldM
 					} else {
-						m := make([]*MsgDataToMQ, 0, 100)
+						m := make([]*MsgDataToMQCtx, 0, 100)
 						m = append(m, &msgFromMQ)
 						aggregationMsgs[string(consumerMessages[i].Key)] = m
 					}
@@ -161,7 +165,7 @@ func (c *BatchConsumerGroup) MessagesDistributionHandle() {
 					if len(v) >= 0 {
 						hashCode := getHashCode(aggregationID)
 						channelID := hashCode % ChannelNum
-						logx.Debugf("triggerID(%d) - generate channelID, {hashCode: %d, channelID: %d, aggregationID: %d)", triggerID, hashCode, channelID, aggregationID)
+						logx.Debugf("triggerID(%s) - generate channelID, {hashCode: %d, channelID: %d, aggregationID: %s)", triggerID, hashCode, channelID, aggregationID)
 						c.chArrays[channelID] <- Cmd2Value{Cmd: AggregationMessages, Value: MsgChannelValue{AggregationID: aggregationID, MsgList: v, TriggerID: triggerID}}
 					}
 				}
@@ -204,7 +208,7 @@ func (c *BatchConsumerGroup) ConsumeClaim(sess sarama.ConsumerGroupSession, clai
 		}
 	}
 	rwLock := new(sync.RWMutex)
-	logx.Infof("online new session msg come", claim.HighWaterMarkOffset(), claim.Topic(), claim.Partition())
+	logx.Info("online new session msg come", claim.HighWaterMarkOffset(), claim.Topic(), claim.Partition())
 	cMsg := make([]*sarama.ConsumerMessage, 0, 1000)
 	t := time.NewTicker(time.Duration(100) * time.Millisecond)
 	var triggerID string
@@ -280,4 +284,27 @@ func (c *BatchConsumerGroup) Stop() {
 // and invert it if the result is negative.
 func getHashCode(s string) uint32 {
 	return crc32.ChecksumIEEE([]byte(s))
+}
+
+func WrapperTracerHandler(aggregationID, triggerID string, msg *MsgDataToMQCtx, cb func(ctx context.Context, key string, value []byte) error) error {
+	_ = triggerID
+
+	ctx, span := startConsumerSpan(msg.Ctx, aggregationID)
+	defer span.End()
+
+	err := cb(ctx, aggregationID, msg.MsgData)
+	if err != nil {
+		s, ok := status.FromError(err)
+		if ok {
+			span.SetStatus(codes.Error, s.Message())
+			span.SetAttributes(ztrace.StatusCodeAttr(s.Code()))
+			ztrace.MessageSent.Event(ctx, 1, s.Proto())
+		} else {
+			span.SetStatus(codes.Error, err.Error())
+		}
+		return err
+	}
+
+	span.SetAttributes(ztrace.StatusCodeAttr(gcodes.OK))
+	return err
 }

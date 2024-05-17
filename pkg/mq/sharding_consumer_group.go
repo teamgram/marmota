@@ -25,7 +25,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 

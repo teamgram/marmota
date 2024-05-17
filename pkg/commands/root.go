@@ -22,7 +22,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/teamgram/marmota/pkg/version"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -30,10 +29,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/teamgram/marmota/pkg/version"
+
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
-////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////
 var (
 	GMainInst MainInstance
 	GSignal   chan os.Signal

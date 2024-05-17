@@ -20,36 +20,101 @@ package kafka
 
 import (
 	"context"
-	"database/sql"
 
-	"github.com/zeromicro/go-zero/core/trace"
+	"github.com/IBM/sarama"
+	ztrace "github.com/zeromicro/go-zero/core/trace"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/codes"
-	oteltrace "go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc/metadata"
 )
 
-var sqlAttributeKey = attribute.Key("kafka.method")
+// spanName is used to identify the span name for the SQL execution.
+const spanName = "kafka.producer"
 
-func startSpan(ctx context.Context, method string) (context.Context, oteltrace.Span) {
-	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
-	start, span := tracer.Start(ctx,
+var kafkaAttributeKey = attribute.Key("kafka.method")
+
+func startProducerSpan(ctx context.Context, method string) (context.Context, trace.Span) {
+	md, ok := metadata.FromOutgoingContext(ctx)
+	if !ok {
+		md = metadata.MD{}
+	}
+	tracer := otel.GetTracerProvider().Tracer(ztrace.TraceName)
+	ctx, span := tracer.Start(ctx,
 		spanName,
-		oteltrace.WithSpanKind(oteltrace.SpanKindClient),
+		trace.WithSpanKind(trace.SpanKindClient),
 	)
-	span.SetAttributes(sqlAttributeKey.String(method))
+	span.SetAttributes(kafkaAttributeKey.String(method))
+	ztrace.Inject(ctx, otel.GetTextMapPropagator(), &md)
+	ctx = metadata.NewOutgoingContext(ctx, md)
 
-	return start, span
+	return ctx, span
 }
 
-func endSpan(span oteltrace.Span, err error) {
+func endProducerSpan(span trace.Span, err error) {
 	defer span.End()
 
-	if err == nil || err == sql.ErrNoRows {
+	if err == nil {
 		span.SetStatus(codes.Ok, "")
 		return
 	}
 
 	span.SetStatus(codes.Error, err.Error())
 	span.RecordError(err)
+}
+
+func startConsumerSpan(ctx context.Context, method string) (context.Context, trace.Span) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		md = metadata.MD{}
+	}
+	bags, spanCtx := ztrace.Extract(ctx, otel.GetTextMapPropagator(), &md)
+	ctx = baggage.ContextWithBaggage(ctx, bags)
+	tracer := otel.GetTracerProvider().Tracer(ztrace.TraceName)
+
+	ctx, span := tracer.Start(trace.ContextWithRemoteSpanContext(ctx, spanCtx),
+		spanName,
+		trace.WithSpanKind(trace.SpanKindServer))
+	span.SetAttributes(kafkaAttributeKey.String(method))
+
+	return ctx, span
+}
+
+func extractTraceHeaders(ctx context.Context) (headers []sarama.RecordHeader) {
+	md, ok := metadata.FromOutgoingContext(ctx)
+	if !ok {
+		return
+	}
+
+	headers = make([]sarama.RecordHeader, 0, len(md))
+
+	for k, v := range md {
+		if len(v) == 0 {
+			continue
+		}
+
+		headers = append(headers, sarama.RecordHeader{
+			Key:   []byte(k),
+			Value: []byte(v[0]),
+		})
+	}
+
+	return
+}
+
+func injectTraceHeaders(headers []*sarama.RecordHeader) (ctx context.Context) {
+	ctx = context.Background()
+	if len(headers) == 0 {
+		return
+	}
+
+	md := make(metadata.MD, len(headers))
+
+	for _, h := range headers {
+		md[string(h.Key)] = []string{string(h.Value)}
+	}
+
+	return metadata.NewIncomingContext(ctx, md)
 }

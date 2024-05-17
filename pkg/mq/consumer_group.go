@@ -27,9 +27,14 @@ package kafka
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/zeromicro/go-zero/core/logx"
+	ztrace "github.com/zeromicro/go-zero/core/trace"
+	"go.opentelemetry.io/otel/codes"
+	gcodes "google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type MessageHandlerF func(ctx context.Context, key string, value []byte)
@@ -95,13 +100,33 @@ func (c *ConsumerGroup) ConsumeClaim(session sarama.ConsumerGroupSession, claim 
 	// The `ConsumeClaim` itself is called within a goroutine, see:
 	// https://github.com/Shopify/sarama/blob/main/consumer_group.go#L27-L29
 	for message := range claim.Messages() {
-		// logx.Debugf("Message claimed: value = %s, timestamp = %v, topic = %s", string(message.Value), message.Timestamp, message.Topic)
+		func(message *sarama.ConsumerMessage) {
+			ctx, span := startConsumerSpan(injectTraceHeaders(message.Headers), string(message.Key))
+			defer span.End()
 
-		if len(message.Value) != 0 {
-			c.cb[message.Topic](context.Background(), string(message.Key), message.Value)
-		} else {
-			logx.Errorf("message(%v) get from kafka but is nil", message.Key)
-		}
+			var (
+				err error
+			)
+			if len(message.Value) != 0 {
+				c.cb[message.Topic](ctx, string(message.Key), message.Value)
+			} else {
+				// logx.Debugf("Message claimed: value = %s, timestamp = %v, topic = %s", string(message.Value), message.Timestamp, message.Topic)
+				err = fmt.Errorf("message(%v) get from kafka but is nil", message.Key)
+			}
+
+			if err != nil {
+				s, ok := status.FromError(err)
+				if ok {
+					span.SetStatus(codes.Error, s.Message())
+					span.SetAttributes(ztrace.StatusCodeAttr(s.Code()))
+					ztrace.MessageSent.Event(ctx, 1, s.Proto())
+				} else {
+					span.SetStatus(codes.Error, err.Error())
+				}
+			} else {
+				span.SetAttributes(ztrace.StatusCodeAttr(gcodes.OK))
+			}
+		}(message)
 
 		session.MarkMessage(message, "")
 	}

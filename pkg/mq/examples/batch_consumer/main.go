@@ -19,7 +19,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"time"
 
@@ -60,7 +59,7 @@ func (s *Server) Initialize() error {
 		func(triggerID string, idList []string) {
 			logx.Debug("triggerID: ", triggerID, ", idList: ", len(idList))
 		},
-		func(ctx context.Context, value kafka.MsgChannelValue) {
+		func(value kafka.MsgChannelValue) {
 			for _, msg := range value.MsgList {
 				time.Sleep(time.Millisecond)
 				logx.Debug("AggregationID: ", value.AggregationID, ", TriggerID: ", value.TriggerID, ", Msg: ", string(msg.MsgData))

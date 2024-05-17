@@ -25,14 +25,17 @@ import (
 
 	"github.com/teamgram/marmota/pkg/error2"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 )
-
-// spanName is used to identify the span name for the SQL execution.
-const spanName = "kafka.producer"
 
 const (
 	maxRetry = 10 // number of retries
+)
+
+const (
+	MessageIDHeaderName = "message_id"
+	SpanHeaderName      = "span_id"
+	TraceHeaderName     = "trace_id"
 )
 
 var errEmptyMsg = errors.New("binary msg is empty")
@@ -73,29 +76,38 @@ func MustKafkaProducer(c *KafkaProducerConf) *Producer {
 // Input send msg to kafka
 // NOTE: If producer has beed created failed, the message will lose.
 func (p *Producer) SendMessage(ctx context.Context, key string, value []byte) (partition int32, offset int64, err error) {
-	if len(value) == 0 {
-		err = error2.Wrap(errors.New("len(value) == 0 "), "")
-		return
-	}
-
-	kMsg := &sarama.ProducerMessage{}
-	kMsg.Topic = p.Topic()
-	kMsg.Key = sarama.StringEncoder(key)
-	kMsg.Value = sarama.ByteEncoder(value)
-	if kMsg.Key.Length() == 0 || kMsg.Value.Length() == 0 {
-		partition = -1
-		offset = -1
-		err = error2.Wrap(errors.New("key or value == 0"), "")
-		return
-	}
-
-	_, span := startSpan(ctx, "SendMessage")
+	ctx, span := startProducerSpan(ctx, "SendMessage")
 	defer func() {
-		endSpan(span, err)
+		endProducerSpan(span, err)
 	}()
 
+	if len(value) == 0 {
+		err = error2.Wrapf(errors.New("len(value) == 0 "), "")
+		return
+	}
+
+	// Prepare Kafka message
+	kMsg := &sarama.ProducerMessage{
+		Topic: p.Topic(),
+		Key:   sarama.StringEncoder(key),
+		Value: sarama.ByteEncoder(value),
+	}
+
+	// Validate message key and value
+	if kMsg.Key.Length() == 0 || kMsg.Value.Length() == 0 {
+		err = error2.Wrap(errEmptyMsg, "")
+		return
+	}
+
+	// Attach context metadata as headers
+	kMsg.Headers = extractTraceHeaders(ctx)
+
+	// Send the message
 	partition, offset, err = p.producer.SendMessage(kMsg)
-	err = error2.Wrap(err, "")
+	if err != nil {
+		err = error2.Wrapf(err, "p.producer.SendMessage error")
+	}
+
 	return
 }
 
