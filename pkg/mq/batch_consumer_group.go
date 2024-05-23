@@ -287,13 +287,13 @@ func getHashCode(s string) uint32 {
 	return crc32.ChecksumIEEE([]byte(s))
 }
 
-func WrapperTracerHandler(aggregationID, triggerID string, msg *MsgDataToMQCtx, cb func(ctx context.Context, key string, value []byte) error) error {
+func WrapperTracerHandler(aggregationID, triggerID string, msg *MsgDataToMQCtx, cb func(ctx context.Context, method, key string, value []byte) error) error {
 	_ = triggerID
 
 	ctx, span := startConsumerSpan(msg.Ctx, aggregationID)
 	defer span.End()
 
-	err := cb(ctx, aggregationID, msg.MsgData)
+	err := cb(ctx, msg.Method, aggregationID, msg.MsgData)
 	if err != nil {
 		s, ok := status.FromError(err)
 		if ok {
