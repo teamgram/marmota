@@ -92,7 +92,7 @@ func (c *ShardingConsumerGroup) Run(channelID int) {
 		select {
 		case message := <-c.chMessage[channelID]:
 			if len(message.Message.Value) != 0 {
-				c.cb(context.Background(), string(message.Message.Key), message.Message.Value)
+				c.cb(context.Background(), tryGetMethodByHeaders(message.Message.Headers), string(message.Message.Key), message.Message.Value)
 			}
 			message.MarkMessage()
 		}

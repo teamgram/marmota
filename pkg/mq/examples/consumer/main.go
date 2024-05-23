@@ -36,7 +36,7 @@ func main() {
 	})
 
 	job.RegisterHandlers("teamgram-test-topic",
-		func(ctx context.Context, key string, value []byte) {
+		func(ctx context.Context, method, key string, value []byte) {
 			fmt.Println("key: ", key, ", value: ", string(value))
 		})
 

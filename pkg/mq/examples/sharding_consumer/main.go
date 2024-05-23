@@ -55,7 +55,7 @@ func (s *Server) Initialize() error {
 	logx.Infov(c)
 	mq := kafka.MustShardingConsumerGroup(&c.TestConsumer)
 
-	mq.RegisterHandler(func(ctx context.Context, key string, value []byte) {
+	mq.RegisterHandler(func(ctx context.Context, method, key string, value []byte) {
 		fmt.Println("key: ", key, ", value: ", string(value))
 	})
 
