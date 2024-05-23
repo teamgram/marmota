@@ -39,12 +39,12 @@ var (
 	// ErrNoMaster is returned by Master when call master multiple times.
 	ErrNoMaster = errors.New("sql: no master instance")
 
-//	// ErrNoRows is returned by Scan when QueryRow doesn't return a row.
-//	// In such a case, QueryRow returns a placeholder *Row value that defers
-//	// this error until a Scan.
-//	ErrNoRows = sql.ErrNoRows
-//	// ErrTxDone transaction done.
-//	ErrTxDone = sql.ErrTxDone
+	// // ErrNoRows is returned by Scan when QueryRow doesn't return a row.
+	// // In such a case, QueryRow returns a placeholder *Row value that defers
+	// // this error until a Scan.
+	// ErrNoRows = sql.ErrNoRows
+	// // ErrTxDone transaction done.
+	// ErrTxDone = sql.ErrTxDone
 )
 
 // DB database.

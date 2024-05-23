@@ -62,14 +62,15 @@ func NewFloat64Keyed() *Map {
 
 // New returns an empty Map that uses the given less than function to
 // compare keys. For example:
-//      type Point { X, Y int }
-//      pointMap := omap.New(func(a, b interface{}) bool {
-//              α, β := a.(Point), b.(Point)
-//              if α.X != β.X {
-//                  return α.X < β.X
-//              }
-//              return α.Y < β.Y
-//          })
+//
+//	type Point { X, Y int }
+//	pointMap := omap.New(func(a, b interface{}) bool {
+//	        α, β := a.(Point), b.(Point)
+//	        if α.X != β.X {
+//	            return α.X < β.X
+//	        }
+//	        return α.Y < β.Y
+//	    })
 func New(less func(interface{}, interface{}) bool) *Map {
 	return &Map{less: less}
 }
@@ -92,7 +93,8 @@ type node struct {
 // Insert inserts a new key-value into the Map and returns true; or
 // replaces an existing key-value pair's value if the keys are equal and
 // returns false. For example:
-//      inserted := myMap.Insert(key, value).
+//
+//	inserted := myMap.Insert(key, value).
 func (m *Map) Insert(key, value interface{}) (inserted bool) {
 	m.root, inserted = m.insert(m.root, key, value)
 	m.root.red = false
@@ -104,7 +106,8 @@ func (m *Map) Insert(key, value interface{}) (inserted bool) {
 
 // Find returns the value and true if the key is in the Map or nil and
 // false otherwise. For example:
-//      value, found := myMap.Find(key).
+//
+//	value, found := myMap.Find(key).
 func (m *Map) Find(key interface{}) (value interface{}, found bool) {
 	root := m.root
 	for root != nil {
@@ -122,7 +125,8 @@ func (m *Map) Find(key interface{}) (value interface{}, found bool) {
 // Delete deletes the key-value with the given key from the Map and returns
 // true, or does nothing and returns false if there is no key-value with
 // the given key. For example:
-//      deleted := myMap.Delete(key).
+//
+//	deleted := myMap.Delete(key).
 func (m *Map) Delete(key interface{}) (deleted bool) {
 	if m.root != nil {
 		if m.root, deleted = m.remove(m.root, key); m.root != nil {

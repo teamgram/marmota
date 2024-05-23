@@ -118,3 +118,14 @@ func injectTraceHeaders(headers []*sarama.RecordHeader) (ctx context.Context) {
 
 	return metadata.NewIncomingContext(ctx, md)
 }
+
+func tryGetMethodByHeaders(headers []*sarama.RecordHeader) (method string) {
+	for _, h := range headers {
+		if string(h.Key) == "method" {
+			method = string(h.Value)
+			break
+		}
+	}
+
+	return
+}

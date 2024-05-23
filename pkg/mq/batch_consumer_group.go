@@ -49,6 +49,7 @@ const (
 
 type MsgDataToMQCtx struct {
 	Ctx     context.Context
+	Method  string
 	MsgData []byte
 }
 
@@ -56,7 +57,6 @@ type MsgChannelValue struct {
 	AggregationID string //maybe userID or super groupID
 	TriggerID     string
 	MsgList       []*MsgDataToMQCtx
-	// lastSeq       uint64
 }
 
 type TriggerChannelValue struct {
@@ -143,6 +143,7 @@ func (c *BatchConsumerGroup) MessagesDistributionHandle() {
 				for i := 0; i < len(consumerMessages); i++ {
 					msgFromMQ := MsgDataToMQCtx{
 						Ctx:     injectTraceHeaders(consumerMessages[i].Headers),
+						Method:  tryGetMethodByHeaders(consumerMessages[i].Headers),
 						MsgData: consumerMessages[i].Value,
 					}
 					aggregationIDList = append(aggregationIDList, string(consumerMessages[i].Key))

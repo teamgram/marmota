@@ -37,7 +37,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type MessageHandlerF func(ctx context.Context, key string, value []byte)
+type MessageHandlerF func(ctx context.Context, method, key string, value []byte)
 
 // ConsumerGroup kafka consumer
 type ConsumerGroup struct {
@@ -108,7 +108,7 @@ func (c *ConsumerGroup) ConsumeClaim(session sarama.ConsumerGroupSession, claim 
 				err error
 			)
 			if len(message.Value) != 0 {
-				c.cb[message.Topic](ctx, string(message.Key), message.Value)
+				c.cb[message.Topic](ctx, tryGetMethodByHeaders(message.Headers), string(message.Key), message.Value)
 			} else {
 				// logx.Debugf("Message claimed: value = %s, timestamp = %v, topic = %s", string(message.Value), message.Timestamp, message.Topic)
 				err = fmt.Errorf("message(%v) get from kafka but is nil", message.Key)

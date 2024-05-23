@@ -97,7 +97,8 @@ func JoinUint64List(s []uint64, sep string) string {
 // there are some issue in username validation
 // 1 - issue : username can be only numeric [must check first character for alphabet]
 // 2 - issue :underscore not allowed [must edit IsAlNumString and add underscore support to it.
-//   by the way underscore can't repeat without any character between them. for example s_a_b_a. ]
+//
+//	by the way underscore can't repeat without any character between them. for example s_a_b_a. ]
 func IsAlNumString(s string) bool {
 	c := 0
 	prevtmp := ' '

@@ -49,7 +49,6 @@ type Timer struct {
 // can be used. Init is idempotent with respect to the heap invariants
 // and may be called whenever the heap invariants may have been invalidated.
 // Its complexity is O(n) where n = h.Len().
-//
 func NewTimer(num int) (t *Timer) {
 	t = new(Timer)
 	t.init(num)

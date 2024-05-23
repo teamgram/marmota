@@ -113,9 +113,12 @@ func RandomSpec0(count uint, start, end int, lower, upper, numbers bool,
 // Param start - the position in set of chars to start at
 // Param end   - the position in set of chars to end before
 // Param letters - if true, generated string will include
-//                 alphabetic characters
+//
+//	alphabetic characters
+//
 // Param numbers - if true, generated string will include
-//                 numeric characters
+//
+//	numeric characters
 func RandomSpec1(count uint, start, end int, lower, upper, numbers bool) string {
 	return RandomSpec0(count, start, end, lower, upper, numbers, nil, defaultRand)
 }
@@ -128,9 +131,12 @@ func RandomSpec1(count uint, start, end int, lower, upper, numbers bool) string 
 //
 // Param count - the length of random string to create
 // Param letters - if true, generated string will include
-//                 alphabetic characters
+//
+//	alphabetic characters
+//
 // Param numbers - if true, generated string will include
-//                 numeric characters
+//
+//	numeric characters
 func RandomAlphaOrNumeric(count uint, letters, numbers bool) string {
 	return RandomSpec1(count, 0, 0, letters, letters, numbers)
 }

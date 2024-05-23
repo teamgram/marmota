@@ -269,9 +269,9 @@ func (b *BeegoHTTPRequest) SetTransport(transport http.RoundTripper) *BeegoHTTPR
 // example:
 //
 //	func(req *http.Request) (*url.URL, error) {
-// 		u, _ := url.ParseRequestURI("http://127.0.0.1:8118")
-// 		return u, nil
-// 	}
+//		u, _ := url.ParseRequestURI("http://127.0.0.1:8118")
+//		return u, nil
+//	}
 func (b *BeegoHTTPRequest) SetProxy(proxy func(*http.Request) (*url.URL, error)) *BeegoHTTPRequest {
 	b.setting.Proxy = proxy
 	return b
