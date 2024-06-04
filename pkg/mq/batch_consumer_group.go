@@ -27,6 +27,7 @@ package kafka
 
 import (
 	"context"
+	"errors"
 	"hash/crc32"
 	"math/rand"
 	"strconv"
@@ -268,8 +269,13 @@ func (c *BatchConsumerGroup) Start() {
 	for {
 		err := c.ConsumerGroup.Consume(ctx, c.Topics(), c)
 		if err != nil {
-			logx.Error(err)
-			return
+			logx.WithContext(ctx).Error("consume err", err, "topic", c.Topics(), "groupID", c.Group())
+			if errors.Is(err, sarama.ErrClosedConsumerGroup) {
+				return
+			}
+			if errors.Is(err, context.Canceled) {
+				return
+			}
 		}
 	}
 }

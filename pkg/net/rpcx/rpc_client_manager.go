@@ -19,10 +19,10 @@
 package rpcx
 
 import (
-	"github.com/zeromicro/go-zero/core/logx"
 	"io"
 	"strings"
 
+	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/syncx"
 	"github.com/zeromicro/go-zero/zrpc"
 )

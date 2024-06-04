@@ -21,6 +21,7 @@ package kafka
 import (
 	"container/list"
 	"context"
+	"errors"
 	"hash/fnv"
 	"sync"
 	"time"
@@ -81,8 +82,13 @@ func (c *ShardingConsumerGroup) Start() {
 	for {
 		err := c.ConsumerGroup.Consume(ctx, c.Topics(), c)
 		if err != nil {
-			logx.Error(err)
-			return
+			logx.WithContext(ctx).Error("consume err", err, "topic", c.Topics(), "groupID", c.Group())
+			if errors.Is(err, sarama.ErrClosedConsumerGroup) {
+				return
+			}
+			if errors.Is(err, context.Canceled) {
+				return
+			}
 		}
 	}
 }
