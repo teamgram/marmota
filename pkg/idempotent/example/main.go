@@ -109,7 +109,7 @@ func T2(store *redis.Redis) {
 func T3(store *redis.Redis) {
 	logx.Infof("start")
 	go func() {
-		v, err := idempotent.DoIdempotent(
+		v, _, err := idempotent.DoIdempotent(
 			context.Background(),
 			store,
 			"0123456789",
@@ -129,7 +129,7 @@ func T3(store *redis.Redis) {
 
 	time.Sleep(100 * time.Millisecond)
 	logx.Infof("start again")
-	v, err := idempotent.DoIdempotent(
+	v, _, err := idempotent.DoIdempotent(
 		context.Background(),
 		store,
 		"0123456789",

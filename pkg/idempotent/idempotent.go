@@ -67,33 +67,33 @@ func (i *Idempotent) Unlock(ctx context.Context) error {
 	return err
 }
 
-func DoIdempotent(ctx context.Context, store *redis.Redis, key string, seconds, expired int, fn func() (any, error)) (any, error) {
+func DoIdempotent(ctx context.Context, store *redis.Redis, key string, seconds, expired int, fn func() (any, error)) (any, bool, error) {
 	idempotent := NewIdempotent(store, key)
 	var v any
 	err := idempotent.TryGetCacheValue(ctx, &v)
 	if err == nil {
 		if v != nil {
-			return v, nil
+			return v, false, nil
 		}
 	} else {
-		return nil, err
+		return nil, false, err
 	}
 
 	ok, err := idempotent.Lock(ctx, seconds)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	} else {
 		if ok {
 			defer idempotent.Unlock(ctx)
 
 			v, err = fn()
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
 
 			err = idempotent.SetCacheValue(ctx, v, expired)
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
 		} else {
 			err = fx.DoWithRetryCtx(
@@ -115,10 +115,10 @@ func DoIdempotent(ctx context.Context, store *redis.Redis, key string, seconds, 
 				fx.WithInterval(time.Second),
 				fx.WithRetry(seconds+1))
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
 		}
 	}
 
-	return v, nil
+	return v, true, nil
 }
