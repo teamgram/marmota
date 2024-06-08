@@ -50,7 +50,7 @@ func T1(store *redis.Redis) {
 	)
 
 	idempotent := idempotent.NewIdempotent(store, "0123456789")
-	err := idempotent.TryGetCacheValue(ctx, &cData)
+	_, err := idempotent.TryGetCacheValue(ctx, &cData)
 	if err == nil {
 		if cData == nil {
 			//
@@ -81,7 +81,7 @@ func T1(store *redis.Redis) {
 		return
 	}
 
-	err = idempotent.TryGetCacheValue(ctx, &cData)
+	_, err = idempotent.TryGetCacheValue(ctx, &cData)
 	if err == nil {
 		if cData == nil {
 			//
@@ -109,37 +109,51 @@ func T2(store *redis.Redis) {
 func T3(store *redis.Redis) {
 	logx.Infof("start")
 	go func() {
-		v, _, err := idempotent.DoIdempotent(
-			context.Background(),
+		var (
+			cData *CacheValue
+			ctx   = context.Background()
+		)
+		cached, err := idempotent.DoIdempotent(
+			ctx,
 			store,
 			"0123456789",
+			&cData,
 			10,
 			30,
-			func() (interface{}, error) {
+			func(ctx context.Context, v any) error {
 				logx.Infof("ready to sleep 5s")
 				time.Sleep(1 * time.Second)
 				logx.Infof("wake up")
-				return &CacheValue{
+				*v.(**CacheValue) = &CacheValue{
 					Key:   "k",
 					Value: "v",
-				}, nil
+				}
+
+				return nil
 			})
-		logx.Infof("v: %v, err: %v", v, err)
+		logx.Infof("cached: %v, v: %v, err: %v", cached, cData, err)
 	}()
 
+	var (
+		cData *CacheValue
+		ctx   = context.Background()
+	)
 	time.Sleep(100 * time.Millisecond)
 	logx.Infof("start again")
-	v, _, err := idempotent.DoIdempotent(
-		context.Background(),
+	cached, err := idempotent.DoIdempotent(
+		ctx,
 		store,
 		"0123456789",
+		&cData,
 		10,
 		30,
-		func() (interface{}, error) {
-			return &CacheValue{
+		func(ctx context.Context, v any) error {
+			*v.(**CacheValue) = &CacheValue{
 				Key:   "k",
 				Value: "v",
-			}, nil
+			}
+
+			return nil
 		})
-	logx.Infof("v: %v, err: %v", v, err)
+	logx.Infof("cached: %v, v: %v, err: %v", cached, cData, err)
 }

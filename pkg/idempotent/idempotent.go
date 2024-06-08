@@ -35,15 +35,19 @@ func NewIdempotent(store *redis.Redis, key string) *Idempotent {
 	}
 }
 
-func (i *Idempotent) TryGetCacheValue(ctx context.Context, v any) error {
-	data, err := i.store.GetCtx(ctx, i.key)
+func (i *Idempotent) TryGetCacheValue(ctx context.Context, v any) (cached bool, err error) {
+	var (
+		data string
+	)
+
+	data, err = i.store.GetCtx(ctx, i.key)
 	if err != nil {
-		return err
+		return false, err
 	} else if data == "" {
-		return nil
+		return false, nil
 	}
 
-	return jsonx.UnmarshalFromString(data, v)
+	return true, jsonx.UnmarshalFromString(data, v)
 }
 
 func (i *Idempotent) SetCacheValue(ctx context.Context, v any, expired int) error {
@@ -67,33 +71,32 @@ func (i *Idempotent) Unlock(ctx context.Context) error {
 	return err
 }
 
-func DoIdempotent(ctx context.Context, store *redis.Redis, key string, seconds, expired int, fn func() (any, error)) (any, bool, error) {
+func DoIdempotent(ctx context.Context, store *redis.Redis, key string, v any, seconds, expired int, fn func(ctx context.Context, v any) error) (bool, error) {
 	idempotent := NewIdempotent(store, key)
-	var v any
-	err := idempotent.TryGetCacheValue(ctx, &v)
-	if err == nil {
-		if v != nil {
-			return v, false, nil
-		}
-	} else {
-		return nil, false, err
+	cached, err := idempotent.TryGetCacheValue(ctx, v)
+	if err != nil {
+		return cached, err
+	} else if cached {
+		return true, nil
 	}
 
 	ok, err := idempotent.Lock(ctx, seconds)
 	if err != nil {
-		return nil, false, err
+		return false, err
 	} else {
 		if ok {
 			defer idempotent.Unlock(ctx)
 
-			v, err = fn()
+			err = fn(ctx, v)
 			if err != nil {
-				return nil, false, err
+				return false, err
 			}
 
 			err = idempotent.SetCacheValue(ctx, v, expired)
 			if err != nil {
-				return nil, false, err
+				return false, err
+			} else {
+				return false, nil
 			}
 		} else {
 			err = fx.DoWithRetryCtx(
@@ -102,7 +105,7 @@ func DoIdempotent(ctx context.Context, store *redis.Redis, key string, seconds, 
 					if retryCount == 0 {
 						return ErrorDoEmpty
 					}
-					err = idempotent.TryGetCacheValue(ctx, &v)
+					cached, err = idempotent.TryGetCacheValue(ctx, v)
 					if err != nil {
 						return err
 					}
@@ -115,10 +118,10 @@ func DoIdempotent(ctx context.Context, store *redis.Redis, key string, seconds, 
 				fx.WithInterval(time.Second),
 				fx.WithRetry(seconds+1))
 			if err != nil {
-				return nil, false, err
+				return false, err
+			} else {
+				return true, nil
 			}
 		}
 	}
-
-	return v, true, nil
 }
