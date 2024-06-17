@@ -16,11 +16,10 @@ package main
 
 import (
 	"context"
-	"time"
-
 	"github.com/teamgram/marmota/pkg/idempotent"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/stores/redis"
+	"time"
 )
 
 type CacheValue struct {
@@ -122,7 +121,7 @@ func T3(store *redis.Redis) {
 			30,
 			func(ctx context.Context, v any) error {
 				logx.Infof("ready to sleep 5s")
-				time.Sleep(1 * time.Second)
+				//time.Sleep(1 * time.Second)
 				logx.Infof("wake up")
 				*v.(**CacheValue) = &CacheValue{
 					Key:   "k",
@@ -138,7 +137,7 @@ func T3(store *redis.Redis) {
 		cData *CacheValue
 		ctx   = context.Background()
 	)
-	time.Sleep(100 * time.Millisecond)
+	//time.Sleep(100 * time.Millisecond)
 	logx.Infof("start again")
 	cached, err := idempotent.DoIdempotent(
 		ctx,
@@ -156,4 +155,26 @@ func T3(store *redis.Redis) {
 			return nil
 		})
 	logx.Infof("cached: %v, v: %v, err: %v", cached, cData, err)
+
+	var (
+		cData2 *CacheValue
+	)
+
+	cached2, err2 := idempotent.DoIdempotent(
+		ctx,
+		store,
+		"0123456789",
+		&cData2,
+		10,
+		30,
+		func(ctx context.Context, v any) error {
+			*v.(**CacheValue) = &CacheValue{
+				Key:   "k",
+				Value: "v",
+			}
+
+			return nil
+		})
+	logx.Infof("cached: %v, v: %v, err: %v", cached2, cData2, err2)
+	time.Sleep(1 * time.Second)
 }

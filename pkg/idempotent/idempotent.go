@@ -77,6 +77,7 @@ func DoIdempotent(ctx context.Context, store *redis.Redis, key string, v any, se
 	if err != nil {
 		return cached, err
 	} else if cached {
+		// logx.Debugf("cached success - %v", v)
 		return true, nil
 	}
 
@@ -96,6 +97,7 @@ func DoIdempotent(ctx context.Context, store *redis.Redis, key string, v any, se
 			if err != nil {
 				return false, err
 			} else {
+				// logx.Debugf("do success - %v", v)
 				return false, nil
 			}
 		} else {
@@ -120,6 +122,7 @@ func DoIdempotent(ctx context.Context, store *redis.Redis, key string, v any, se
 			if err != nil {
 				return false, err
 			} else {
+				// logx.Debugf("retry success - %v", v)
 				return true, nil
 			}
 		}

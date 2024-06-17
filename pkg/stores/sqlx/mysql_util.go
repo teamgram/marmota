@@ -22,8 +22,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/zeromicro/go-zero/core/logx"
 	"strings"
+
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 type CommonDAO struct {
@@ -57,7 +58,7 @@ func (dao *CommonDAO) CheckExists(ctx context.Context, table string, params map[
 	)
 
 	err := dao.db.NamedQueryRowPartial(ctx, &existed, sql, params)
-	if err != nil && err != ErrNotFound {
+	if err != nil && !errors.Is(err, ErrNotFound) {
 		logx.WithContext(ctx).Errorf("CheckExists - [%s] error: %s", table, err)
 		return false
 	}
@@ -82,7 +83,7 @@ func (dao *CommonDAO) CalcSize(ctx context.Context, table string, params map[str
 	var count int
 	err := dao.db.QueryRow(ctx, &count, sql, aValues...)
 	if err != nil {
-		logx.Errorf("calcSize - [%s] error: %s", sql, err)
+		logx.WithContext(ctx).Errorf("calcSize - [%s] error: %s", sql, err)
 		return 0
 	}
 	return count
@@ -94,7 +95,7 @@ func (dao *CommonDAO) CalcSizeByWhere(ctx context.Context, table, where string) 
 	var count int
 	err := dao.db.QueryRow(ctx, &count, sql)
 	if err != nil {
-		logx.Errorf("calcSize - [%s] error: %s", sql, err)
+		logx.WithContext(ctx).Errorf("calcSize - [%s] error: %s", sql, err)
 		return 0
 	}
 	return count
@@ -119,7 +120,7 @@ func CheckExists(ctx context.Context, db *DB, table string, params map[string]in
 	)
 
 	err := db.NamedQueryRowPartial(ctx, &existed, sql, params)
-	if err != nil && err != ErrNotFound {
+	if err != nil && !errors.Is(err, ErrNotFound) {
 		logx.WithContext(ctx).Errorf("CheckExists - [%s] error: %s", table, err)
 		return false, err
 	}
