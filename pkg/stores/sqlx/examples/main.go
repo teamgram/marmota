@@ -115,7 +115,9 @@ func main() {
 	//In(db)
 	// Tx(db)
 	// TxNamedExec(db)
-	BulkExec(db)
+	// BulkExec(db)
+
+	IsDuplicate(db)
 }
 
 func Query(db *sqlx.DB) {
@@ -311,5 +313,19 @@ func BulkExec(db *sqlx.DB) {
 		v1)
 	if err != nil {
 		logx.Error("exec error - %v", err)
+	}
+}
+
+func IsDuplicate(db *sqlx.DB) {
+	v1 := &Message1DO{
+		MessageId: 2005,
+		Data2:     "2005",
+		State:     0,
+		Deleted:   true,
+	}
+
+	_, err := db.NamedExec(context.Background(), "INSERT INTO message1 (message_id, data2, state, deleted) VALUES(:message_id, :data2, :state, :deleted)", v1)
+	if err != nil {
+		logx.Errorf("exec error - %v, IsDuplicate: %v", err, sqlx.IsDuplicate(err))
 	}
 }

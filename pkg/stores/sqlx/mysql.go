@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
@@ -86,17 +87,23 @@ func IsDuplicate(err error) bool {
 		return false
 	}
 
-	myerr, ok := err.(*mysql.MySQLError)
-	return ok && myerr.Number == 1062
+	var (
+		mysqlErr *mysql.MySQLError
+	)
+
+	return errors.As(err, &mysqlErr) && mysqlErr.Number == 1062
 }
 
 // IsMissingDb
-// IsMissingDb
+// Check if MySQL error is a Error Code: 1049. Unknown database ...
 func IsMissingDb(err error) bool {
 	if err == nil {
 		return false
 	}
 
-	myerr, ok := err.(*mysql.MySQLError)
-	return ok && myerr.Number == 1049
+	var (
+		mysqlErr *mysql.MySQLError
+	)
+
+	return errors.As(err, &mysqlErr) && mysqlErr.Number == 1049
 }
