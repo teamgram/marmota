@@ -24,8 +24,16 @@ func InInt32List(elems []int32) string {
 	return strings2.JoinInt32List(elems, ",")
 }
 
+func InUint32List(elems []uint32) string {
+	return strings2.JoinUint32List(elems, ",")
+}
+
 func InInt64List(elems []int64) string {
 	return strings2.JoinInt64List(elems, ",")
+}
+
+func InUint64List(elems []uint64) string {
+	return strings2.JoinUint64List(elems, ",")
 }
 
 func InStringList(elems []string) string {
