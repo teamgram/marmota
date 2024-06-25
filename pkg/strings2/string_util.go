@@ -31,7 +31,6 @@ func JoinInt32List(s []int32, sep string) string {
 	buf := make([]byte, 0, l*2+len(sep)*l+len(sep)*(l-1))
 	for i := 0; i < l; i++ {
 		buf = strconv.AppendInt(buf, int64(s[i]), 10)
-		// buf = append(buf, sep...)
 		if i != l-1 {
 			buf = append(buf, sep...)
 		}
@@ -48,7 +47,6 @@ func JoinUint32List(s []uint32, sep string) string {
 	buf := make([]byte, 0, l*2+len(sep)*l+len(sep)*(l-1))
 	for i := 0; i < l; i++ {
 		buf = strconv.AppendUint(buf, uint64(s[i]), 10)
-		buf = append(buf, sep...)
 		if i != l-1 {
 			buf = append(buf, sep...)
 		}
@@ -65,7 +63,6 @@ func JoinInt64List(s []int64, sep string) string {
 	buf := make([]byte, 0, l*2+len(sep)*l+len(sep)*(l-1))
 	for i := 0; i < l; i++ {
 		buf = strconv.AppendInt(buf, s[i], 10)
-		buf = append(buf, sep...)
 		if i != l-1 {
 			buf = append(buf, sep...)
 		}
@@ -82,7 +79,6 @@ func JoinUint64List(s []uint64, sep string) string {
 	buf := make([]byte, 0, l*2+len(sep)*l+len(sep)*(l-1))
 	for i := 0; i < l; i++ {
 		buf = strconv.AppendUint(buf, s[i], 10)
-		buf = append(buf, sep...)
 		if i != l-1 {
 			buf = append(buf, sep...)
 		}

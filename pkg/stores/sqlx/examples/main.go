@@ -1,20 +1,16 @@
-// Copyright 2022 Teamgram Authors
-//  All rights reserved.
+// Copyright © 2024 Teamgram Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//   http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
-// Author: teamgramio (teamgram.io@gmail.com)
-//
 
 package main
 
@@ -108,16 +104,20 @@ func main() {
 
 	// NamedExec2(db)
 
-	//Query(db)
-	//QueryRow(db)
-	//Get(db)
-	//Select(db)
-	//In(db)
+	// Query(db)
+	// QueryRow(db)
+	// Get(db)
+	// Select(db)
+	// In(db)
 	// Tx(db)
 	// TxNamedExec(db)
 	// BulkExec(db)
 
-	IsDuplicate(db)
+	// IsDuplicate(db)
+
+	InInt32List(db)
+	InInt64List(db)
+	InStringList(db)
 }
 
 func Query(db *sqlx.DB) {
@@ -327,5 +327,79 @@ func IsDuplicate(db *sqlx.DB) {
 	_, err := db.NamedExec(context.Background(), "INSERT INTO message1 (message_id, data2, state, deleted) VALUES(:message_id, :data2, :state, :deleted)", v1)
 	if err != nil {
 		logx.Errorf("exec error - %v, IsDuplicate: %v", err, sqlx.IsDuplicate(err))
+	}
+}
+
+func InInt32List(db *sqlx.DB) {
+	var (
+		err error
+
+		query = fmt.Sprintf("SELECT * FROM message1 WHERE id IN (%s)", sqlx.InInt32List([]int32{3, 5, 6, 7}))
+		v1    = make([]Message1DO, 0)
+	)
+
+	if err != nil {
+		// r sql.Result
+		logx.Errorf("sqlx.In in SelectListByPhoneList(_), error: %v", err)
+		return
+	}
+
+	if err = db.QueryRows(context.Background(), &v1, query); err != nil {
+		logx.Errorf("query error - %v", err)
+		return
+	}
+
+	for i := 0; i < len(v1); i++ {
+		logx.Infof("%d => : %+v", i, v1[i])
+	}
+}
+
+func InInt64List(db *sqlx.DB) {
+	var (
+		err error
+
+		query = fmt.Sprintf("SELECT * FROM message1 WHERE message_id IN (%s)", sqlx.InInt64List([]int64{2005, 2006, 2007, 2008}))
+		v1    = make([]Message1DO, 0)
+	)
+
+	fmt.Println(query)
+
+	if err != nil {
+		// r sql.Result
+		logx.Errorf("sqlx.In in SelectListByPhoneList(_), error: %v", err)
+		return
+	}
+
+	if err = db.QueryRows(context.Background(), &v1, query); err != nil {
+		logx.Errorf("query error - %v", err)
+		return
+	}
+
+	for i := 0; i < len(v1); i++ {
+		logx.Infof("%d => : %+v", i, v1[i])
+	}
+}
+
+func InStringList(db *sqlx.DB) {
+	var (
+		err error
+
+		query = fmt.Sprintf("SELECT * FROM message1 WHERE message_id IN (%s)", sqlx.InStringList([]string{"2005", "2006", "2007", "2008"}))
+		v1    = make([]Message1DO, 0)
+	)
+
+	if err != nil {
+		// r sql.Result
+		logx.Errorf("sqlx.In in SelectListByPhoneList(_), error: %v", err)
+		return
+	}
+
+	if err = db.QueryRows(context.Background(), &v1, query); err != nil {
+		logx.Errorf("query error - %v", err)
+		return
+	}
+
+	for i := 0; i < len(v1); i++ {
+		logx.Infof("%d => : %+v", i, v1[i])
 	}
 }
