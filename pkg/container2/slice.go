@@ -14,65 +14,65 @@
 
 package container2
 
-func ContainsInt(slice []int, target int) bool {
-	for _, v := range slice {
-		if v == target {
+func ContainsInt(list []int, i int) bool {
+	for _, v := range list {
+		if v == i {
 			return true
 		}
 	}
 	return false
 }
 
-func ContainsInt32(slice []int32, target int32) bool {
-	for _, v := range slice {
-		if v == target {
+func ContainsInt32(list []int32, i int32) bool {
+	for _, v := range list {
+		if v == i {
 			return true
 		}
 	}
 	return false
 }
 
-func ContainsInt64(slice []int64, target int64) bool {
-	for _, v := range slice {
-		if v == target {
+func ContainsInt64(list []int64, i int64) bool {
+	for _, v := range list {
+		if v == i {
 			return true
 		}
 	}
 	return false
 }
 
-func ContainsUint32(slice []uint32, target uint32) bool {
-	for _, v := range slice {
-		if v == target {
+func ContainsUint32(list []uint32, i uint32) bool {
+	for _, v := range list {
+		if v == i {
 			return true
 		}
 	}
 	return false
 }
 
-func ContainsUint64(slice []uint64, target uint64) bool {
-	for _, v := range slice {
-		if v == target {
+func ContainsUint64(list []uint64, i uint64) bool {
+	for _, v := range list {
+		if v == i {
 			return true
 		}
 	}
 	return false
 }
 
-func ContainsString(slice []string, target string) bool {
-	for _, v := range slice {
-		if v == target {
+func ContainsString(list []string, str string) bool {
+	for idx := range list {
+		if list[idx] == str {
 			return true
 		}
 	}
 	return false
 }
 
-func AppendIgnoreNil(slice []interface{}, elems ...interface{}) []interface{} {
-	for _, e := range elems {
-		if e != nil {
-			slice = append(slice, e)
+func AppendIgnoreNil(list []interface{}, elems ...interface{}) []interface{} {
+	for idx := range elems {
+		if elems[idx] != nil {
+			list = append(list, elems[idx])
 		}
 	}
-	return slice
+	return list
 }
