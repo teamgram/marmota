@@ -15,8 +15,8 @@
 package container2
 
 func ContainsInt(list []int, i int) bool {
-	for _, v := range list {
-		if v == i {
+	for idx := range list {
+		if list[idx] == i {
 			return true
 		}
 	}
@@ -24,8 +24,8 @@ func ContainsInt(list []int, i int) bool {
 }
 
 func ContainsInt32(list []int32, i int32) bool {
-	for _, v := range list {
-		if v == i {
+	for idx := range list {
+		if list[idx] == i {
 			return true
 		}
 	}
@@ -33,8 +33,8 @@ func ContainsInt32(list []int32, i int32) bool {
 }
 
 func ContainsInt64(list []int64, i int64) bool {
-	for _, v := range list {
-		if v == i {
+	for idx := range list {
+		if list[idx] == i {
 			return true
 		}
 	}
@@ -42,8 +42,8 @@ func ContainsInt64(list []int64, i int64) bool {
 }
 
 func ContainsUint32(list []uint32, i uint32) bool {
-	for _, v := range list {
-		if v == i {
+	for idx := range list {
+		if list[idx] == i {
 			return true
 		}
 	}
@@ -51,8 +51,8 @@ func ContainsUint32(list []uint32, i uint32) bool {
 }
 
 func ContainsUint64(list []uint64, i uint64) bool {
-	for _, v := range list {
-		if v == i {
+	for idx := range list {
+		if list[idx] == i {
 			return true
 		}
 	}
