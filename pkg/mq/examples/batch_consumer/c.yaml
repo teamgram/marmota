@@ -1,7 +1,7 @@
 Name: c
 Log:
   ServiceName: c
-  Mode: file
+  #Mode: file
   Path: ./log
   Level: debug
 
