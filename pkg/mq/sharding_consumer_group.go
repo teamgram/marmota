@@ -26,8 +26,8 @@ import (
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
-func MustShardingConsumerGroup(c *KafkaShardingConsumerConf, autoCommitEnable bool) *ShardingConsumerGroup {
-	config, err := BuildConsumerGroupConfig(&c.KafkaConsumerConf, sarama.OffsetNewest, autoCommitEnable)
+func MustShardingConsumerGroup(c *KafkaShardingConsumerConf) *ShardingConsumerGroup {
+	config, err := BuildConsumerGroupConfig(&c.KafkaConsumerConf, sarama.OffsetNewest, true)
 	if err != nil {
 		panic(err)
 	}

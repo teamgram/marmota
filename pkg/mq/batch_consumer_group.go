@@ -79,7 +79,7 @@ type BatchConsumerGroup struct {
 	cb2               BatchMessageHandlerF
 }
 
-func MustKafkaBatchConsumer(c *KafkaConsumerConf, autoCommitEnable bool) *BatchConsumerGroup {
+func MustKafkaBatchConsumer(c *KafkaConsumerConf) *BatchConsumerGroup {
 	cg := &BatchConsumerGroup{
 		c: c,
 	}
@@ -91,7 +91,7 @@ func MustKafkaBatchConsumer(c *KafkaConsumerConf, autoCommitEnable bool) *BatchC
 		go cg.Run(i)
 	}
 
-	config, err := BuildConsumerGroupConfig(c, sarama.OffsetNewest, autoCommitEnable)
+	config, err := BuildConsumerGroupConfig(c, sarama.OffsetNewest, true)
 	if err != nil {
 		panic(err)
 	}

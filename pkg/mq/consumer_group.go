@@ -45,8 +45,8 @@ type ConsumerGroup struct {
 	//cancel context.Context
 }
 
-func MustKafkaConsumer(c *KafkaConsumerConf, autoCommitEnable bool) *ConsumerGroup {
-	config, err := BuildConsumerGroupConfig(c, sarama.OffsetNewest, autoCommitEnable)
+func MustKafkaConsumer(c *KafkaConsumerConf) *ConsumerGroup {
+	config, err := BuildConsumerGroupConfig(c, sarama.OffsetNewest, true)
 	if err != nil {
 		panic(err)
 	}
