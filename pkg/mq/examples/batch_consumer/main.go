@@ -67,7 +67,7 @@ func (s *Server) Destroy() {
 }
 
 func (s *Server) doBatchConsumer(c Config) {
-	mq := kafka.MustKafkaBatchConsumer(&c.TestConsumer, false)
+	mq := kafka.MustKafkaBatchConsumer(&c.TestConsumer)
 
 	mq.RegisterHandlers(
 		func(triggerID string, idList []string) {
@@ -89,8 +89,8 @@ func (s *Server) doBatchConsumerV2(c Config) {
 
 	mq2.RegisterHandler(
 		func(channelID int, msg *kafka.MsgConsumerMessage) {
-			fmt.Println("channelID: ", channelID, ", TriggerID: ", msg.TriggerID(), ", len: ", len(msg.MsgData()))
-			for _, value := range msg.MsgData() {
+			fmt.Println("channelID: ", channelID, ", TriggerID: ", msg.TriggerID, ", len: ", len(msg.MsgList))
+			for _, value := range msg.MsgList {
 				_ = value
 				// fmt.Println("channelID: ", channelID, ", TriggerID: ", msg.TriggerID(), ", len: ", len(value.MsgData))
 				// time.Sleep(time.Millisecond)

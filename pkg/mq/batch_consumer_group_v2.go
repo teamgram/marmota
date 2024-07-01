@@ -218,29 +218,17 @@ func (b *BatcherConsumerMessage) scheduler() {
 }
 
 type MsgConsumerMessage struct {
-	key       string
-	triggerID string
-	msgData   []*MsgDataToMQCtx
-}
-
-func (m MsgConsumerMessage) Key() string {
-	return m.key
-}
-
-func (m MsgConsumerMessage) TriggerID() string {
-	return m.triggerID
-}
-
-func (m MsgConsumerMessage) MsgData() []*MsgDataToMQCtx {
-	return m.msgData
+	Key       string
+	TriggerID string
+	MsgList   []*MsgDataToMQCtx
 }
 
 func (m MsgConsumerMessage) String() string {
 	var sb strings.Builder
 	sb.WriteString("Key: ")
-	sb.WriteString(m.key)
+	sb.WriteString(m.Key)
 	sb.WriteString(", Values: [")
-	for i, v := range m.msgData {
+	for i, v := range m.MsgList {
 		if i > 0 {
 			sb.WriteString(", ")
 		}
@@ -258,15 +246,15 @@ func (b *BatcherConsumerMessage) distributeMessage(messages map[string][]*sarama
 			b.counter.Add(1)
 		}
 		channelID := b.Sharding(key)
-		msgData := make([]*MsgDataToMQCtx, 0, len(data))
+		msgList := make([]*MsgDataToMQCtx, 0, len(data))
 		for i := range data {
-			msgData = append(msgData, &MsgDataToMQCtx{
+			msgList = append(msgList, &MsgDataToMQCtx{
 				Ctx:     injectTraceHeaders(data[i].Headers),
 				Method:  tryGetMethodByHeaders(data[i].Headers),
 				MsgData: data[i].Value,
 			})
 		}
-		b.chArrays[channelID] <- &MsgConsumerMessage{key: key, triggerID: triggerID, msgData: msgData}
+		b.chArrays[channelID] <- &MsgConsumerMessage{Key: key, TriggerID: triggerID, MsgList: msgList}
 	}
 	if b.config.syncWait {
 		b.counter.Wait()
@@ -372,8 +360,7 @@ func (c *BatchConsumerGroupV2) Cleanup(_ sarama.ConsumerGroupSession) error {
 
 func (c *BatchConsumerGroupV2) ConsumeClaim(session sarama.ConsumerGroupSession,
 	claim sarama.ConsumerGroupClaim) error { // a instance in the consumer group
-	//log.ZInfo(context.Background(), "online new session msg come", "highWaterMarkOffset",
-	//	claim.HighWaterMarkOffset(), "topic", claim.Topic(), "partition", claim.Partition())
+	logx.Info("online new session msg come", "highWaterMarkOffset", claim.HighWaterMarkOffset(), "topic", claim.Topic(), "partition", claim.Partition())
 	c.messageBatches.OnComplete = func(lastMessage *sarama.ConsumerMessage, totalCount int) {
 		session.MarkMessage(lastMessage, "")
 		session.Commit()
@@ -390,7 +377,7 @@ func (c *BatchConsumerGroupV2) ConsumeClaim(session sarama.ConsumerGroupSession,
 			}
 			err := c.messageBatches.Put(context.Background(), msg)
 			if err != nil {
-				// log.ZWarn(context.Background(), "put msg to  error", err, "msg", msg)
+				logx.Error("put msg to  error", err, "msg", msg)
 			}
 		case <-session.Context().Done():
 			return nil
