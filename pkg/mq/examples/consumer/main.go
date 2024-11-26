@@ -33,7 +33,7 @@ func main() {
 		Topics:  []string{"teamgram-test-topic"},
 		Brokers: []string{"127.0.0.1:9092"},
 		Group:   "teamgram-test-group-job",
-	}, false)
+	})
 
 	job.RegisterHandlers("teamgram-test-topic",
 		func(ctx context.Context, method, key string, value []byte) {
