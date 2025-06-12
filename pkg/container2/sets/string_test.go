@@ -19,7 +19,7 @@ import (
 	"reflect"
 	"testing"
 
-	"istio.io/istio/pkg/test/util/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewSet(t *testing.T) {
