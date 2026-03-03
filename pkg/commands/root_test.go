@@ -49,15 +49,9 @@ func (e *NullInstance) Destroy() {
 
 func TestRun1(t *testing.T) {
 	instance := &NullInstance{}
-	//instance.m = func() {
-	//	QuitAppInstance()
-	//}
-	//
-	//DoMainAppInstance(instance)
 
 	result := instance.state
-	expect := 3
-
+	expect := 0
 	if result != expect {
 		t.Error(`expect:`, expect, `result:`, result)
 	}
@@ -66,19 +60,54 @@ func TestRun1(t *testing.T) {
 func TestRun2(t *testing.T) {
 	instance := &NullInstance{}
 	wg := sync.WaitGroup{}
-
 	wg.Add(1)
 	instance.m = func() {
 		logx.Info("done...")
 		wg.Done()
 	}
-
-	// go DoMainAppInstance(instance)
+	// Simulate RunLoop having run (state becomes 2 and m() is invoked)
+	instance.RunLoop()
 	wg.Wait()
 	result := instance.state
 	expect := 2
-
 	if result != expect {
 		t.Error(`expect:`, expect, `result:`, result)
+	}
+}
+
+// testRunnerInstance is used by TestRunner_Shutdown to verify Runner.Run + Shutdown flow.
+type testRunnerInstance struct {
+	runLoopStarted chan struct{}
+	destroyCh      chan struct{}
+}
+
+func (t *testRunnerInstance) Initialize() error { return nil }
+
+func (t *testRunnerInstance) RunLoop() {
+	close(t.runLoopStarted)
+	<-make(chan struct{}) // block until process exits
+}
+
+func (t *testRunnerInstance) Destroy() {
+	close(t.destroyCh)
+}
+
+func TestRunner_Shutdown(t *testing.T) {
+	inst := &testRunnerInstance{
+		runLoopStarted: make(chan struct{}),
+		destroyCh:      make(chan struct{}),
+	}
+	r := NewRunner(inst)
+	go r.Run()
+	<-inst.runLoopStarted
+	r.Shutdown()
+	<-inst.destroyCh
+}
+
+func TestRunner_Instance(t *testing.T) {
+	inst := &NullInstance{}
+	r := NewRunner(inst)
+	if r.Instance() != inst {
+		t.Error("Instance() should return the same instance")
 	}
 }

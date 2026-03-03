@@ -17,6 +17,7 @@ func (f formBinding) Name() string {
 }
 
 func (f formBinding) Bind(req *http.Request, obj interface{}) error {
+	req.Body = http.MaxBytesReader(nil, req.Body, DefaultMaxBodyBytes)
 	if err := req.ParseForm(); err != nil {
 		return errors.WithStack(err)
 	}
@@ -31,6 +32,7 @@ func (f formPostBinding) Name() string {
 }
 
 func (f formPostBinding) Bind(req *http.Request, obj interface{}) error {
+	req.Body = http.MaxBytesReader(nil, req.Body, DefaultMaxBodyBytes)
 	if err := req.ParseForm(); err != nil {
 		return errors.WithStack(err)
 	}
@@ -45,6 +47,7 @@ func (f formMultipartBinding) Name() string {
 }
 
 func (f formMultipartBinding) Bind(req *http.Request, obj interface{}) error {
+	req.Body = http.MaxBytesReader(nil, req.Body, DefaultMaxBodyBytes)
 	if err := req.ParseMultipartForm(defaultMemory); err != nil {
 		return errors.WithStack(err)
 	}

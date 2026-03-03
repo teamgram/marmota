@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
+	"github.com/teamgram/marmota/pkg/hack"
 	"github.com/zeromicro/go-zero/core/logx"
 	ztrace "github.com/zeromicro/go-zero/core/trace"
 	"go.opentelemetry.io/otel/codes"
@@ -119,10 +120,13 @@ func (c *BatchConsumerGroup) Run(channelID int) {
 }
 
 func (c *BatchConsumerGroup) MessagesDistributionHandle() {
+	aggregationMsgs := make(map[string][]*MsgDataToMQCtx, ChannelNum)
 	for {
-		aggregationMsgs := make(map[string][]*MsgDataToMQCtx, ChannelNum)
 		select {
 		case cmd := <-c.msgDistributionCh:
+			for k := range aggregationMsgs {
+				delete(aggregationMsgs, k)
+			}
 			switch cmd.Cmd {
 			case ConsumerMsgs:
 				triggerChannelValue := cmd.Value.(TriggerChannelValue)
@@ -130,23 +134,16 @@ func (c *BatchConsumerGroup) MessagesDistributionHandle() {
 				consumerMessages := triggerChannelValue.cMsgList
 				aggregationIDList := make([]string, 0, len(triggerChannelValue.cMsgList))
 
-				//Aggregation map[userid]message list
 				logx.Debug(triggerID, "batch messages come to distribution center", len(consumerMessages))
 				for i := 0; i < len(consumerMessages); i++ {
+					aggID := string(consumerMessages[i].Key)
 					msgFromMQ := MsgDataToMQCtx{
 						Ctx:     injectTraceHeaders(consumerMessages[i].Headers),
 						Method:  tryGetMethodByHeaders(consumerMessages[i].Headers),
 						MsgData: consumerMessages[i].Value,
 					}
-					aggregationIDList = append(aggregationIDList, string(consumerMessages[i].Key))
-					if oldM, ok := aggregationMsgs[string(consumerMessages[i].Key)]; ok {
-						oldM = append(oldM, &msgFromMQ)
-						aggregationMsgs[string(consumerMessages[i].Key)] = oldM
-					} else {
-						m := make([]*MsgDataToMQCtx, 0, 100)
-						m = append(m, &msgFromMQ)
-						aggregationMsgs[string(consumerMessages[i].Key)] = m
-					}
+					aggregationIDList = append(aggregationIDList, aggID)
+					aggregationMsgs[aggID] = append(aggregationMsgs[aggID], &msgFromMQ)
 				}
 
 				if c.cb != nil {
@@ -203,6 +200,7 @@ func (c *BatchConsumerGroup) ConsumeClaim(sess sarama.ConsumerGroupSession, clai
 	rwLock := new(sync.RWMutex)
 	logx.Info("online new session msg come", claim.HighWaterMarkOffset(), claim.Topic(), claim.Partition())
 	cMsg := make([]*sarama.ConsumerMessage, 0, 1000)
+	spare := make([]*sarama.ConsumerMessage, 0, 1000)
 	t := time.NewTicker(time.Duration(100) * time.Millisecond)
 	var triggerID string
 	go func() {
@@ -211,17 +209,14 @@ func (c *BatchConsumerGroup) ConsumeClaim(sess sarama.ConsumerGroupSession, clai
 			case <-t.C:
 				if len(cMsg) > 0 {
 					rwLock.Lock()
-					ccMsg := make([]*sarama.ConsumerMessage, 0, 1000)
-					for _, v := range cMsg {
-						ccMsg = append(ccMsg, v)
-					}
-					cMsg = make([]*sarama.ConsumerMessage, 0, 1000)
+					ccMsg := cMsg
+					cMsg = spare[:0]
+					spare = spare[:0]
 					rwLock.Unlock()
 					split := 1000
 					triggerID = OperationIDGenerator()
 					logx.Info(triggerID, " - timer trigger msg consumer start, len(msg) is ", len(ccMsg))
 					for i := 0; i < len(ccMsg)/split; i++ {
-						//log.Debug()
 						c.msgDistributionCh <- Cmd2Value{Cmd: ConsumerMsgs, Value: TriggerChannelValue{
 							triggerID: triggerID, cMsgList: ccMsg[i*split : (i+1)*split]}}
 					}
@@ -229,9 +224,11 @@ func (c *BatchConsumerGroup) ConsumeClaim(sess sarama.ConsumerGroupSession, clai
 						c.msgDistributionCh <- Cmd2Value{Cmd: ConsumerMsgs, Value: TriggerChannelValue{
 							triggerID: triggerID, cMsgList: ccMsg[split*(len(ccMsg)/split):]}}
 					}
-					//sess.MarkMessage(ccMsg[len(cMsg)-1], "")
-
-					logx.Info(triggerID, " - timer trigger msg consumer end, len(msg) is ", len(cMsg))
+					for i := range ccMsg {
+						ccMsg[i] = nil
+					}
+					spare = ccMsg[:0]
+					logx.Info(triggerID, " - timer trigger msg consumer end, len(msg) is ", len(ccMsg))
 				}
 			}
 		}
@@ -281,7 +278,7 @@ func (c *BatchConsumerGroup) Stop() {
 // and non negative integer. Here we cast to an integer
 // and invert it if the result is negative.
 func getHashCode(s string) uint32 {
-	return crc32.ChecksumIEEE([]byte(s))
+	return crc32.ChecksumIEEE(hack.Bytes(s))
 }
 
 func WrapperTracerHandler(aggregationID, triggerID string, msg *MsgDataToMQCtx, cb func(ctx context.Context, method, key string, value []byte) error) error {

@@ -175,6 +175,22 @@ func (m *BufferInput) Bytes(size int) []byte {
 	return x
 }
 
+// BytesNoCopy returns a slice of the internal buffer without copying.
+// The returned slice is only valid until the next call to BufferInput; the caller must not modify it.
+// Returns nil on error or if size would exceed the remaining buffer.
+func (m *BufferInput) BytesNoCopy(size int) []byte {
+	if m.err != nil {
+		return nil
+	}
+	if m.off+size > m.size {
+		m.err = io.EOF
+		return nil
+	}
+	x := m.buf[m.off : m.off+size]
+	m.off += size
+	return x
+}
+
 func (m *BufferInput) DumpSize(size int) string {
 	if m.off+size > m.size {
 		size = m.size - m.off

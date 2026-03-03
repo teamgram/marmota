@@ -272,27 +272,27 @@ func TestLRUIsEvicted(t *testing.T) {
 	cache := NewLRUCache(size)
 
 	cache.Set("key1", &CacheValue{1})
+	beforeKey2 := time.Now()
 	cache.Set("key2", &CacheValue{1})
+	afterKey2 := time.Now()
 	cache.Set("key3", &CacheValue{1})
 	// lru: [key3, key2, key1]
 
 	// Look up the elements. This will rearrange the LRU ordering.
 	cache.Get("key3")
-	beforeKey2 := time.Now()
 	cache.Get("key2")
-	afterKey2 := time.Now()
 	cache.Get("key1")
 	// lru: [key1, key2, key3]
 
 	cache.Set("key0", &CacheValue{1})
-	// lru: [key0, key1, key2]
+	// lru: [key0, key1, key2]; tail is key2
 
 	// The least recently used one should have been evicted.
 	if _, ok := cache.Get("key3"); ok {
 		t.Error("Least recently used element was not evicted.")
 	}
 
-	// Check oldest
+	// Oldest() returns the insertion time of the tail element (key2)
 	if o := cache.Oldest(); o.Before(beforeKey2) || o.After(afterKey2) {
 		t.Errorf("cache.Oldest returned an unexpected value: got %v, expected a value between %v and %v", o, beforeKey2, afterKey2)
 	}

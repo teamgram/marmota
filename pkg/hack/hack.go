@@ -18,10 +18,7 @@ limitations under the License.
 // breaking some Go rules.
 package hack
 
-import (
-	"reflect"
-	"unsafe"
-)
+import "unsafe"
 
 // StringArena lets you consolidate allocations for a group of strings
 // that have similar life length
@@ -33,10 +30,7 @@ type StringArena struct {
 // NewStringArena creates an arena of the specified size.
 func NewStringArena(size int) *StringArena {
 	sa := &StringArena{buf: make([]byte, 0, size)}
-	pbytes := (*reflect.SliceHeader)(unsafe.Pointer(&sa.buf))
-	pstring := (*reflect.StringHeader)(unsafe.Pointer(&sa.str))
-	pstring.Data = pbytes.Data
-	pstring.Len = pbytes.Cap
+	sa.str = unsafe.String(unsafe.SliceData(sa.buf[:cap(sa.buf)]), cap(sa.buf))
 	return sa
 }
 
@@ -61,35 +55,30 @@ func (sa *StringArena) SpaceLeft() int {
 
 // String force casts a []byte to a string.
 // USE AT YOUR OWN RISK
-func String(b []byte) (s string) {
+func String(b []byte) string {
 	if len(b) == 0 {
 		return ""
 	}
-	pbytes := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	pstring := (*reflect.StringHeader)(unsafe.Pointer(&s))
-	pstring.Data = pbytes.Data
-	pstring.Len = pbytes.Len
-	return
+	return unsafe.String(unsafe.SliceData(b), len(b))
 }
 
 // StringPointer returns &s[0], which is not allowed in go
 func StringPointer(s string) unsafe.Pointer {
-	pstring := (*reflect.StringHeader)(unsafe.Pointer(&s))
-	return unsafe.Pointer(pstring.Data)
+	return unsafe.Pointer(unsafe.StringData(s))
 }
 
 // Bytes bring a no copy convert from string to byte slice
 // consider the risk
 func Bytes(s string) []byte {
-	pstring := (*reflect.StringHeader)(unsafe.Pointer(&s))
-	return BytesFromPtr(pstring.Data, pstring.Len)
+	if s == "" {
+		return nil
+	}
+	return unsafe.Slice(unsafe.StringData(s), len(s))
 }
 
 func BytesFromPtr(ptr uintptr, len int) []byte {
-	var b []byte
-	pbytes := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	pbytes.Data = uintptr(ptr)
-	pbytes.Len = len
-	pbytes.Cap = len
-	return b
+	if len <= 0 {
+		return nil
+	}
+	return unsafe.Slice((*byte)(unsafe.Pointer(ptr)), len)
 }

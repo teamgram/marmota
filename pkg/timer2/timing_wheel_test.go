@@ -9,10 +9,6 @@ import (
 	"github.com/teamgram/marmota/pkg/sync2"
 )
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
 type MockEntry struct {
 	id       int
 	refcount sync2.AtomicInt32

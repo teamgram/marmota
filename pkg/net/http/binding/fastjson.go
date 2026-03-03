@@ -19,6 +19,7 @@ func (fastjsonBinding) Name() string {
 }
 
 func (fastjsonBinding) Bind(req *http.Request, obj interface{}) error {
+	req.Body = http.MaxBytesReader(nil, req.Body, DefaultMaxBodyBytes)
 	readBodyF := func() ([]byte, error) {
 		defer req.Body.Close()
 		return io.ReadAll(req.Body)

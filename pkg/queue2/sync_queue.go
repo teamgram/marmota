@@ -53,8 +53,7 @@ func (q *SyncQueue) Pop() (v interface{}) {
 	}
 
 	if buffer.Length() > 0 {
-		v = buffer.Peek()
-		buffer.Remove()
+		v = buffer.Remove()
 	}
 
 	q.lock.Unlock()
@@ -68,8 +67,7 @@ func (q *SyncQueue) TryPop() (v interface{}, ok bool) {
 	q.lock.Lock()
 
 	if buffer.Length() > 0 {
-		v = buffer.Peek()
-		buffer.Remove()
+		v = buffer.Remove()
 		ok = true
 	} else if q.closed {
 		ok = true

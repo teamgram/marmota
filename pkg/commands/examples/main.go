@@ -24,8 +24,9 @@ import (
 )
 
 type exapmlesInstance struct {
-	state int
-	m     func()
+	state    int
+	m        func()
+	shutdown func() // 由 main 注入 r.Shutdown，用于优雅退出
 }
 
 func (e *exapmlesInstance) Initialize() error {
@@ -49,8 +50,10 @@ func (e *exapmlesInstance) Initialize() error {
 
 func (e *exapmlesInstance) RunLoop() {
 	logx.Info("null run_loop...")
-	// commands.GSignal <- syscall.SIGQUIT
-	commands.DoExit()
+	// 新写法：使用注入的 shutdown 回调触发优雅退出，不依赖包级 defaultRunner
+	if e.shutdown != nil {
+		e.shutdown()
+	}
 }
 
 func (e *exapmlesInstance) Destroy() {
@@ -58,5 +61,8 @@ func (e *exapmlesInstance) Destroy() {
 }
 
 func main() {
-	commands.Run(&exapmlesInstance{})
+	inst := &exapmlesInstance{}
+	r := commands.NewRunner(inst)
+	inst.shutdown = r.Shutdown
+	r.Run()
 }

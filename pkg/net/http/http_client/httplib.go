@@ -39,7 +39,6 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"io"
-	"io/ioutil"
 	"log"
 	"mime/multipart"
 	"net"
@@ -63,6 +62,28 @@ var defaultSetting = BeegoHTTPSettings{
 
 var defaultCookieJar http.CookieJar
 var settingMutex sync.Mutex
+
+var defaultTransport *http.Transport
+var defaultTransportOnce sync.Once
+
+// getDefaultTransport returns a shared Transport for connection reuse when
+// BeegoHTTPRequest does not set a custom Transport. Uses defaultSetting for
+// timeouts and TLS.
+func getDefaultTransport() *http.Transport {
+	defaultTransportOnce.Do(func() {
+		defaultTransport = &http.Transport{
+			TLSClientConfig:     defaultSetting.TLSClientConfig,
+			Proxy:               defaultSetting.Proxy,
+			DialContext:         (&net.Dialer{Timeout: defaultSetting.ConnectTimeout, KeepAlive: 30 * time.Second}).DialContext,
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost:  100,
+			IdleConnTimeout:      90 * time.Second,
+			TLSHandshakeTimeout:  10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		}
+	})
+	return defaultTransport
+}
 
 // createDefaultCookie creates a global cookiejar to store cookies.
 func createDefaultCookie() {
@@ -309,11 +330,11 @@ func (b *BeegoHTTPRequest) Body(data interface{}) *BeegoHTTPRequest {
 	switch t := data.(type) {
 	case string:
 		bf := bytes.NewBufferString(t)
-		b.req.Body = ioutil.NopCloser(bf)
+		b.req.Body = io.NopCloser(bf)
 		b.req.ContentLength = int64(len(t))
 	case []byte:
 		bf := bytes.NewBuffer(t)
-		b.req.Body = ioutil.NopCloser(bf)
+		b.req.Body = io.NopCloser(bf)
 		b.req.ContentLength = int64(len(t))
 	}
 	return b
@@ -326,7 +347,7 @@ func (b *BeegoHTTPRequest) XMLBody(obj interface{}) (*BeegoHTTPRequest, error) {
 		if err != nil {
 			return b, err
 		}
-		b.req.Body = ioutil.NopCloser(bytes.NewReader(byts))
+		b.req.Body = io.NopCloser(bytes.NewReader(byts))
 		b.req.ContentLength = int64(len(byts))
 		b.req.Header.Set("Content-Type", "application/xml")
 	}
@@ -340,7 +361,7 @@ func (b *BeegoHTTPRequest) XMLBody(obj interface{}) (*BeegoHTTPRequest, error) {
 //		if err != nil {
 //			return b, err
 //		}
-//		b.req.Body = ioutil.NopCloser(bytes.NewReader(byts))
+//		b.req.Body = io.NopCloser(bytes.NewReader(byts))
 //		b.req.ContentLength = int64(len(byts))
 //		b.req.Header.Set("Content-Type", "application/x+yaml")
 //	}
@@ -354,7 +375,7 @@ func (b *BeegoHTTPRequest) JSONBody(obj interface{}) (*BeegoHTTPRequest, error) 
 		if err != nil {
 			return b, err
 		}
-		b.req.Body = ioutil.NopCloser(bytes.NewReader(byts))
+		b.req.Body = io.NopCloser(bytes.NewReader(byts))
 		b.req.ContentLength = int64(len(byts))
 		b.req.Header.Set("Content-Type", "application/json")
 	}
@@ -404,7 +425,7 @@ func (b *BeegoHTTPRequest) buildURL(paramBody string) {
 				pw.Close()
 			}()
 			b.Header("Content-Type", bodyWriter.FormDataContentType())
-			b.req.Body = ioutil.NopCloser(pr)
+			b.req.Body = io.NopCloser(pr)
 			return
 		}
 
@@ -454,17 +475,9 @@ func (b *BeegoHTTPRequest) DoRequest() (resp *http.Response, err error) {
 	b.req.URL = urlParsed
 
 	trans := b.setting.Transport
-
 	if trans == nil {
-		// create default transport
-		trans = &http.Transport{
-			TLSClientConfig:     b.setting.TLSClientConfig,
-			Proxy:               b.setting.Proxy,
-			Dial:                TimeoutDialer(b.setting.ConnectTimeout, b.setting.ReadWriteTimeout),
-			MaxIdleConnsPerHost: 100,
-		}
+		trans = getDefaultTransport()
 	} else {
-		// if b.transport is *http.Transport then set the settings.
 		if t, ok := trans.(*http.Transport); ok {
 			if t.TLSClientConfig == nil {
 				t.TLSClientConfig = b.setting.TLSClientConfig
@@ -472,8 +485,11 @@ func (b *BeegoHTTPRequest) DoRequest() (resp *http.Response, err error) {
 			if t.Proxy == nil {
 				t.Proxy = b.setting.Proxy
 			}
-			if t.Dial == nil {
-				t.Dial = TimeoutDialer(b.setting.ConnectTimeout, b.setting.ReadWriteTimeout)
+			if t.DialContext == nil {
+				t.DialContext = (&net.Dialer{
+					Timeout:   b.setting.ConnectTimeout,
+					KeepAlive: 30 * time.Second,
+				}).DialContext
 			}
 		}
 	}
@@ -489,6 +505,7 @@ func (b *BeegoHTTPRequest) DoRequest() (resp *http.Response, err error) {
 	client := &http.Client{
 		Transport: trans,
 		Jar:       jar,
+		Timeout:   b.setting.ReadWriteTimeout,
 	}
 
 	if b.setting.UserAgent != "" && b.req.Header.Get("User-Agent") == "" {
@@ -548,10 +565,10 @@ func (b *BeegoHTTPRequest) Bytes() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		b.body, err = ioutil.ReadAll(reader)
+		b.body, err = io.ReadAll(reader)
 		return b.body, err
 	}
-	b.body, err = ioutil.ReadAll(resp.Body)
+	b.body, err = io.ReadAll(resp.Body)
 	return b.body, err
 }
 

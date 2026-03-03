@@ -167,7 +167,7 @@ func JoinInt64List(s []int64, sep string) string {
 	totalLen := (l - 1) * len(sep)
 	// Calculate total length needed for the final string
 	if l < 200000 {
-		totalLen += l * 6
+		totalLen += l * 10 // int64 max decimal digits is 19; 10 is a reasonable estimate
 	} else {
 		for i := range s {
 			totalLen += int64Len(s[i])

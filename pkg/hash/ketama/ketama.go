@@ -23,6 +23,8 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+
+	"github.com/teamgram/marmota/pkg/hack"
 )
 
 type HashFunc func(data []byte) uint32
@@ -32,7 +34,7 @@ const (
 )
 
 type Ketama struct {
-	sync.Mutex
+	sync.RWMutex
 	hash     HashFunc
 	replicas int
 	keys     []int //  Sorted keys
@@ -55,20 +57,21 @@ func NewKetama(replicas int, fn HashFunc) *Ketama {
 }
 
 func (h *Ketama) IsEmpty() bool {
-	h.Lock()
-	defer h.Unlock()
-
+	h.RLock()
+	defer h.RUnlock()
 	return len(h.keys) == 0
 }
 
 func (h *Ketama) Add(nodes ...string) {
 	h.Lock()
 	defer h.Unlock()
-
+	buf := make([]byte, 0, 64)
 	for _, node := range nodes {
 		for i := 0; i < h.replicas; i++ {
-			key := int(h.hash([]byte(strconv.Itoa(i) + node)))
-
+			buf = buf[:0]
+			buf = strconv.AppendInt(buf, int64(i), 10)
+			buf = append(buf, node...)
+			key := int(h.hash(buf))
 			if _, ok := h.hashMap[key]; !ok {
 				h.keys = append(h.keys, key)
 			}
@@ -83,10 +86,13 @@ func (h *Ketama) Remove(nodes ...string) {
 	defer h.Unlock()
 
 	deletedKey := make([]int, 0)
+	buf := make([]byte, 0, 64)
 	for _, node := range nodes {
 		for i := 0; i < h.replicas; i++ {
-			key := int(h.hash([]byte(strconv.Itoa(i) + node)))
-
+			buf = buf[:0]
+			buf = strconv.AppendInt(buf, int64(i), 10)
+			buf = append(buf, node...)
+			key := int(h.hash(buf))
 			if _, ok := h.hashMap[key]; ok {
 				deletedKey = append(deletedKey, key)
 				delete(h.hashMap, key)
@@ -123,19 +129,15 @@ func (h *Ketama) deleteKeys(deletedKeys []int) {
 }
 
 func (h *Ketama) Get(key string) (string, bool) {
-	if h.IsEmpty() {
+	h.RLock()
+	defer h.RUnlock()
+	if len(h.keys) == 0 {
 		return "", false
 	}
-
-	hash := int(h.hash([]byte(key)))
-
-	h.Lock()
-	defer h.Unlock()
-
+	hash := int(h.hash(hack.Bytes(key)))
 	idx := sort.Search(len(h.keys), func(i int) bool {
 		return h.keys[i] >= hash
 	})
-
 	if idx == len(h.keys) {
 		idx = 0
 	}

@@ -57,6 +57,10 @@ type entry struct {
 	expiration int64 // nanoseconds
 }
 
+var ttlEntryPool = sync.Pool{
+	New: func() interface{} { return new(entry) },
+}
+
 // EvictionCallback is a function that will be called on entry eviction
 // from an ExpiringCache.
 //
@@ -153,8 +157,9 @@ func (c *ttlCache) evictExpired(t time.Time) {
 		e := value.(*entry)
 		if e.expiration <= n {
 			c.entries.Delete(key)
-			c.callback(key, value.(*entry).value)
-			// Note: can miscount if the key was removed before it was evicted
+			c.callback(key, e.value)
+			e.value = nil
+			ttlEntryPool.Put(e)
 			atomic.AddUint64(&c.stats.Evictions, 1)
 		}
 		return true
@@ -170,11 +175,9 @@ func (c *ttlCache) Set(key interface{}, value interface{}) {
 }
 
 func (c *ttlCache) SetWithExpiration(key interface{}, value interface{}, expiration time.Duration) {
-	e := &entry{
-		value:      value,
-		expiration: atomic.LoadInt64(&c.baseTimeNanos) + expiration.Nanoseconds(),
-	}
-
+	e := ttlEntryPool.Get().(*entry)
+	e.value = value
+	e.expiration = atomic.LoadInt64(&c.baseTimeNanos) + expiration.Nanoseconds()
 	c.entries.Store(key, e)
 	atomic.AddUint64(&c.stats.Writes, 1)
 }
@@ -196,19 +199,22 @@ func (c *ttlCache) Get(key interface{}) (interface{}, bool) {
 }
 
 func (c *ttlCache) Remove(key interface{}) {
-	c.entries.Delete(key)
-
-	// Note: we count this as a removal even in the case where the key wasn't actually in the map
+	if v, ok := c.entries.Load(key); ok {
+		c.entries.Delete(key)
+		e := v.(*entry)
+		e.value = nil
+		ttlEntryPool.Put(e)
+	}
 	atomic.AddUint64(&c.stats.Removals, 1)
 }
 
 func (c *ttlCache) RemoveAll() {
 	c.entries.Range(func(key interface{}, value interface{}) bool {
 		c.entries.Delete(key)
-
-		// Note: can miscount if the key was evicted before it was removed
+		e := value.(*entry)
+		e.value = nil
+		ttlEntryPool.Put(e)
 		atomic.AddUint64(&c.stats.Removals, 1)
-
 		return true
 	})
 }

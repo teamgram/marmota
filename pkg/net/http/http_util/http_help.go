@@ -20,14 +20,23 @@ package http_util
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 	"strings"
 
 	"github.com/teamgram/marmota/pkg/logx"
 	"github.com/teamgram/marmota/pkg/net/http/binding"
 )
+
+// DefaultMaxUploadBytes is the default maximum size in bytes for a single uploaded file (32MB).
+// Use GetUploadFileWithLimit to override per call.
+const DefaultMaxUploadBytes = 32 << 20
+
+var ErrUploadTooLarge = errors.New("upload file exceeds maximum allowed size")
+var ErrInvalidFileName = errors.New("upload file name contains invalid characters")
 
 type HttpApiRequest interface {
 	Method() string
@@ -89,7 +98,16 @@ func BindWithApiRequest(r *http.Request, req HttpApiMethod) error {
 	return nil
 }
 
+// GetUploadFile reads the first multipart form file for key and returns its
+// sanitized filename and body, with a default max size of DefaultMaxUploadBytes.
 func GetUploadFile(c *http.Request, key string) (fileName string, file []byte, err error) {
+	return GetUploadFileWithLimit(c, key, DefaultMaxUploadBytes)
+}
+
+// GetUploadFileWithLimit reads the first multipart form file for key and returns
+// its sanitized filename and body. Files larger than maxBytes return ErrUploadTooLarge.
+// The returned fileName is the base name only; path traversal and null bytes are rejected.
+func GetUploadFileWithLimit(c *http.Request, key string, maxBytes int64) (fileName string, file []byte, err error) {
 	file2, fileHeader, err2 := c.FormFile(key)
 	if err2 != nil {
 		err = err2
@@ -97,14 +115,27 @@ func GetUploadFile(c *http.Request, key string) (fileName string, file []byte, e
 	}
 	defer file2.Close()
 
-	buf := new(bytes.Buffer)
-	if _, err = io.Copy(buf, file2); err != nil {
-		// log.Errorf("upload.%s.file.illegal,err::%v", key, err.Error())
+	rawName := fileHeader.Filename
+	fileName = path.Base(rawName)
+	if fileName == "" || fileName == "." {
+		fileName = rawName
+	}
+	if strings.Contains(fileName, "\x00") || strings.Contains(fileName, "..") {
+		err = ErrInvalidFileName
 		return
 	}
 
-	fileName = fileHeader.Filename
-	file = buf.Bytes()
+	limited := io.LimitReader(file2, maxBytes+1)
+	buf := new(bytes.Buffer)
+	n, err := io.Copy(buf, limited)
+	if err != nil {
+		return
+	}
+	if n > maxBytes {
+		err = ErrUploadTooLarge
+		return
+	}
 
+	file = buf.Bytes()
 	return
 }

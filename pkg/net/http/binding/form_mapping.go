@@ -20,38 +20,42 @@ type cache struct {
 	mutex sync.RWMutex
 }
 
-func (c *cache) get(obj reflect.Type) (s *sinfo) {
-	var ok bool
+func (c *cache) get(obj reflect.Type) *sinfo {
 	c.mutex.RLock()
-	if s, ok = c.data[obj]; !ok {
-		c.mutex.RUnlock()
-		s = c.set(obj)
-		return
-	}
+	s, ok := c.data[obj]
 	c.mutex.RUnlock()
-	return
+	if ok {
+		return s
+	}
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	if s, ok = c.data[obj]; ok {
+		return s
+	}
+	s = c.buildSinfo(obj)
+	c.data[obj] = s
+	return s
 }
 
-func (c *cache) set(obj reflect.Type) (s *sinfo) {
-	s = new(sinfo)
+func (c *cache) buildSinfo(obj reflect.Type) *sinfo {
+	s := new(sinfo)
 	tp := obj.Elem()
 	for i := 0; i < tp.NumField(); i++ {
 		fd := new(field)
 		fd.tp = tp.Field(i)
+		fd.kind = fd.tp.Type.Kind()
+		fd.isTime = fd.tp.Type == reflect.TypeOf(time.Time{})
 		tag := fd.tp.Tag.Get("form")
 		fd.name, fd.option = parseTag(tag)
 		if defV := fd.tp.Tag.Get("default"); defV != "" {
 			dv := reflect.New(fd.tp.Type).Elem()
-			setWithProperType(fd.tp.Type.Kind(), []string{defV}, dv, fd.option)
+			setWithProperType(fd.kind, []string{defV}, dv, fd.option)
 			fd.hasDefault = true
 			fd.defaultValue = dv
 		}
 		s.field = append(s.field, fd)
 	}
-	c.mutex.Lock()
-	c.data[obj] = s
-	c.mutex.Unlock()
-	return
+	return s
 }
 
 type sinfo struct {
@@ -65,6 +69,8 @@ type field struct {
 
 	hasDefault   bool          // if field had default value
 	defaultValue reflect.Value // field default value
+	isTime       bool          // cached: type is time.Time
+	kind         reflect.Kind  // cached: type kind for hot path
 }
 
 func mapForm(ptr interface{}, form map[string][]string) error {
@@ -106,13 +112,13 @@ func mapForm(ptr interface{}, form map[string][]string) error {
 			structField.Set(fd.defaultValue)
 			continue
 		}
-		if _, isTime := structField.Interface().(time.Time); isTime {
+		if fd.isTime {
 			if err := setTimeField(inputValue[0], typeField, structField); err != nil {
 				return err
 			}
 			continue
 		}
-		if err := setWithProperType(typeField.Type.Kind(), inputValue, structField, fd.option); err != nil {
+		if err := setWithProperType(fd.kind, inputValue, structField, fd.option); err != nil {
 			return err
 		}
 	}

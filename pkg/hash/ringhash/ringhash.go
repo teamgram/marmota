@@ -67,10 +67,14 @@ func (ring *Ring) Len() int {
 
 // Add adds keys to the ring.
 func (ring *Ring) Add(keys ...string) {
+	buf := make([]byte, 0, 64)
 	for _, key := range keys {
 		for i := 0; i < ring.replicas; i++ {
+			buf = buf[:0]
+			buf = strconv.AppendInt(buf, int64(i), 10)
+			buf = append(buf, key...)
 			ring.keys = append(ring.keys, elem{
-				hash: ring.hashfunc([]byte(strconv.Itoa(i) + key)),
+				hash: ring.hashfunc(buf),
 				key:  key})
 		}
 	}

@@ -15,7 +15,8 @@ type Entry interface {
 }
 
 type TimingWheel struct {
-	running    bool
+	stopCh     chan struct{}
+	stopOnce   sync.Once
 	bucketSize int
 	bucketIdx  int
 	buckets    [][]Entry
@@ -34,27 +35,47 @@ func NewTimingWheel(size int) *TimingWheel {
 }
 
 func (t *TimingWheel) Start() {
-	t.running = true
+	t.stopCh = make(chan struct{})
 	go t.timerLoop()
 }
 
 func (t *TimingWheel) Stop() {
-	t.running = false
+	t.stopOnce.Do(func() {
+		if t.stopCh != nil {
+			close(t.stopCh)
+		}
+	})
+	t.mu.Lock()
 	t.bucketIdx = 0
+	t.mu.Unlock()
 }
 
 func (t *TimingWheel) timerLoop() {
-	for t.running {
-		<-time.After(time.Second)
-		t.onTimer()
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			t.onTimer()
+		case <-t.stopCh:
+			return
+		}
 	}
 }
 
 func (t *TimingWheel) onTimer() {
 	var entries []Entry
 	t.mu.Lock()
-	entries = t.buckets[t.bucketIdx]
-	t.buckets[t.bucketIdx] = []Entry{}
+	cur := t.buckets[t.bucketIdx]
+	if len(cur) > 0 {
+		entries = make([]Entry, len(cur))
+		copy(entries, cur)
+	}
+	t.buckets[t.bucketIdx] = t.buckets[t.bucketIdx][:0]
+	t.bucketIdx++
+	if t.bucketIdx >= t.bucketSize {
+		t.bucketIdx = 0
+	}
 	t.mu.Unlock()
 
 	if len(entries) > 0 {
@@ -63,11 +84,6 @@ func (t *TimingWheel) onTimer() {
 				v.TimerCallback()
 			}
 		}
-	}
-
-	t.bucketIdx++
-	if t.bucketIdx >= t.bucketSize {
-		t.bucketIdx = 0
 	}
 }
 

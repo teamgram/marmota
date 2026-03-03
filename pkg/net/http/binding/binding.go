@@ -7,6 +7,10 @@ import (
 	"gopkg.in/go-playground/validator.v9"
 )
 
+// DefaultMaxBodyBytes is the default maximum size in bytes for request body (10MB).
+// Bindings that read req.Body wrap it with http.MaxBytesReader to prevent OOM from huge payloads.
+const DefaultMaxBodyBytes = 10 << 20
+
 // MIME
 const (
 	MIMEJSON              = "application/json"

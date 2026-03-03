@@ -172,23 +172,29 @@ func (c *lruCache) evicter(evictionInterval time.Duration) {
 }
 
 func (c *lruCache) evictExpired(t time.Time) {
-	// We snapshot a base time here such that the time doesn't need to be
-	// sampled in the Set call as calling time.Now() is relatively expensive.
-	// Doing it here provides enough precision for our needs and tends to have
-	// much lower call frequency.
 	n := t.UnixNano()
 	atomic.StoreInt64(&c.baseTimeNanos, n)
 
+	// Phase 1: lock-free scan to collect expired entry indices (expiration is int64, read is atomic on 64-bit)
+	expired := make([]int32, 0, 64)
 	for i := int32(1); i < int32(len(c.entries)); i++ {
-		ent := &c.entries[i]
-
-		c.Lock()
-		if ent.expiration <= n {
-			c.remove(i)
-			c.stats.Evictions++
+		if atomic.LoadInt64(&c.entries[i].expiration) <= n {
+			expired = append(expired, i)
 		}
-		c.Unlock()
 	}
+	if len(expired) == 0 {
+		return
+	}
+
+	// Phase 2: single lock, batch remove (re-validate expiration in case entry was updated after scan)
+	c.Lock()
+	for _, i := range expired {
+		if c.entries[i].expiration <= n {
+			c.remove(i)
+			atomic.AddUint64(&c.stats.Evictions, 1)
+		}
+	}
+	c.Unlock()
 }
 
 func (c *lruCache) EvictExpired() {
@@ -244,8 +250,7 @@ func (c *lruCache) SetWithExpiration(key interface{}, value interface{}, expirat
 	ent.value = value
 	ent.expiration = exp
 
-	c.stats.Writes++
-
+	atomic.AddUint64(&c.stats.Writes, 1)
 	c.Unlock()
 }
 
@@ -258,9 +263,9 @@ func (c *lruCache) Get(key interface{}) (interface{}, bool) {
 		c.unlinkEntry(index)
 		c.linkEntryAtHead(index)
 		value = c.entries[index].value
-		c.stats.Hits++
+		atomic.AddUint64(&c.stats.Hits, 1)
 	} else {
-		c.stats.Misses++
+		atomic.AddUint64(&c.stats.Misses, 1)
 	}
 
 	c.Unlock()
@@ -273,7 +278,7 @@ func (c *lruCache) Remove(key interface{}) {
 
 	if index, ok := c.lookup[key]; ok {
 		c.remove(index)
-		c.stats.Removals++
+		atomic.AddUint64(&c.stats.Removals, 1)
 	}
 
 	c.Unlock()
@@ -286,7 +291,7 @@ func (c *lruCache) RemoveAll() {
 		c.Lock()
 		if ent.key != nil {
 			c.remove(int32(i))
-			c.stats.Removals++
+			atomic.AddUint64(&c.stats.Removals, 1)
 		}
 		c.Unlock()
 	}
@@ -304,9 +309,13 @@ func (c *lruCache) remove(index int32) {
 }
 
 func (c *lruCache) Stats() Stats {
-	c.RLock()
-	defer c.RUnlock()
-	return c.stats
+	return Stats{
+		Writes:    atomic.LoadUint64(&c.stats.Writes),
+		Hits:      atomic.LoadUint64(&c.stats.Hits),
+		Misses:    atomic.LoadUint64(&c.stats.Misses),
+		Evictions: atomic.LoadUint64(&c.stats.Evictions),
+		Removals:  atomic.LoadUint64(&c.stats.Removals),
+	}
 }
 
 /* debugging aid
