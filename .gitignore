@@ -25,3 +25,5 @@ pkg/mq/examples/batch_consumer/log/*
 /pkg/mq/examples/sharding_consumer/sharding_consumer
 pkg/mq/examples/sharding_consumer/log/*
 !pkg/mq/examples/sharding_consumer/log/.gitkeeper
+
+/specs

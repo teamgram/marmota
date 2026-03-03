@@ -217,12 +217,16 @@ func (c *BatchConsumerGroup) ConsumeClaim(sess sarama.ConsumerGroupSession, clai
 					triggerID = OperationIDGenerator()
 					logx.Info(triggerID, " - timer trigger msg consumer start, len(msg) is ", len(ccMsg))
 					for i := 0; i < len(ccMsg)/split; i++ {
+						msgs := make([]*sarama.ConsumerMessage, split)
+						copy(msgs, ccMsg[i*split:(i+1)*split])
 						c.msgDistributionCh <- Cmd2Value{Cmd: ConsumerMsgs, Value: TriggerChannelValue{
-							triggerID: triggerID, cMsgList: ccMsg[i*split : (i+1)*split]}}
+							triggerID: triggerID, cMsgList: msgs}}
 					}
 					if (len(ccMsg) % split) > 0 {
+						msgs := make([]*sarama.ConsumerMessage, len(ccMsg)%split)
+						copy(msgs, ccMsg[split*(len(ccMsg)/split):])
 						c.msgDistributionCh <- Cmd2Value{Cmd: ConsumerMsgs, Value: TriggerChannelValue{
-							triggerID: triggerID, cMsgList: ccMsg[split*(len(ccMsg)/split):]}}
+							triggerID: triggerID, cMsgList: msgs}}
 					}
 					for i := range ccMsg {
 						ccMsg[i] = nil
