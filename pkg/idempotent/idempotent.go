@@ -17,7 +17,6 @@ import (
 )
 
 var (
-	ErrorDoEmpty    = fmt.Errorf("do empty")
 	ErrorCacheEmpty = fmt.Errorf("cache empty")
 )
 
@@ -71,6 +70,41 @@ func (i *Idempotent) Unlock(ctx context.Context) error {
 	return err
 }
 
+// waitCache keeps trying to read the cached value within the given number of seconds.
+// It returns nil once the value is found in cache, or the last error (including ErrorCacheEmpty)
+// if the retries are exhausted.
+func waitCache(ctx context.Context, seconds int, getter func(context.Context, any) (bool, error), v any) error {
+	return fx.DoWithRetryCtx(
+		ctx,
+		func(ctx context.Context, retryCount int) error {
+			cached, err := getter(ctx, v)
+			if err != nil {
+				return err
+			}
+			if !cached {
+				return ErrorCacheEmpty
+			}
+			return nil
+		},
+		fx.WithInterval(time.Second),
+		fx.WithRetry(seconds+1),
+	)
+}
+
+// DoIdempotent ensures that for a given key the user function fn is executed at most once
+// across distributed workers, and subsequent callers reuse the cached result.
+//
+//   - First caller:
+//     - Tries cache; if miss, acquires a distributed lock, executes fn, stores the result in cache,
+//       and returns (false, nil).
+//   - Concurrent callers:
+//     - If cache already has the value, return (true, nil).
+//     - If the lock is held by another worker, they wait up to `seconds` by polling the cache:
+//       - If the value appears in cache during this window, return (true, nil).
+//       - If it never appears, return an error (for example ErrorCacheEmpty or underlying Redis error).
+//
+// seconds is the lock TTL in seconds and should be greater than the worst-case execution time of fn.
+// expired is the cache TTL in seconds.
 func DoIdempotent(ctx context.Context, store *redis.Redis, key string, v any, seconds, expired int, fn func(ctx context.Context, v any) error) (bool, error) {
 	idempotent := NewIdempotent(store, key)
 	cached, err := idempotent.TryGetCacheValue(ctx, v)
@@ -101,24 +135,7 @@ func DoIdempotent(ctx context.Context, store *redis.Redis, key string, v any, se
 				return false, nil
 			}
 		} else {
-			err = fx.DoWithRetryCtx(
-				ctx,
-				func(ctx context.Context, retryCount int) error {
-					if retryCount == 0 {
-						return ErrorDoEmpty
-					}
-					cached, err = idempotent.TryGetCacheValue(ctx, v)
-					if err != nil {
-						return err
-					}
-					if v == nil {
-						return ErrorCacheEmpty
-					} else {
-						return nil
-					}
-				},
-				fx.WithInterval(time.Second),
-				fx.WithRetry(seconds+1))
+			err = waitCache(ctx, seconds, idempotent.TryGetCacheValue, v)
 			if err != nil {
 				return false, err
 			} else {
