@@ -182,8 +182,8 @@ func TestBasicEmbeddedWithTags(t *testing.T) {
 	// }
 
 	v := m.FieldByName(zv, "a")
-	if ival(v) != z.Bar.Foo.A { // the dominant field
-		t.Errorf("Expecting %d, got %d", z.Bar.Foo.A, ival(v))
+	if ival(v) != z.A { // the dominant field
+		t.Errorf("Expecting %d, got %d", z.A, ival(v))
 	}
 	v = m.FieldByName(zv, "b")
 	if ival(v) != z.B {
