@@ -60,6 +60,7 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
+	"sync"
 	"unicode"
 
 	"github.com/teamgram/marmota/pkg/stores/sqlx/reflectx"
@@ -116,7 +117,7 @@ func bindMapArgs(names []string, arg map[string]interface{}) ([]interface{}, err
 // The rules for binding field names to parameter names follow the same
 // conventions as for StructScan, including obeying the `db` struct tags.
 func bindStruct(bindType int, query string, arg interface{}, m *reflectx.Mapper) (string, []interface{}, error) {
-	bound, names, err := compileNamedQuery([]byte(query), bindType)
+	bound, names, err := cachedCompileNamedQuery(query, bindType)
 	if err != nil {
 		return "", []interface{}{}, err
 	}
@@ -152,7 +153,7 @@ func fixBound(bound string, loop int) string {
 func bindArray(bindType int, query string, arg interface{}, m *reflectx.Mapper) (string, []interface{}, error) {
 	// do the initial binding with QUESTION;  if bindType is not question,
 	// we can rebind it at the end.
-	bound, names, err := compileNamedQuery([]byte(query), QUESTION)
+	bound, names, err := cachedCompileNamedQuery(query, QUESTION)
 	if err != nil {
 		return "", []interface{}{}, err
 	}
@@ -181,7 +182,7 @@ func bindArray(bindType int, query string, arg interface{}, m *reflectx.Mapper) 
 
 // bindMap binds a named parameter query with a map of arguments.
 func bindMap(bindType int, query string, args map[string]interface{}) (string, []interface{}, error) {
-	bound, names, err := compileNamedQuery([]byte(query), bindType)
+	bound, names, err := cachedCompileNamedQuery(query, bindType)
 	if err != nil {
 		return "", []interface{}{}, err
 	}
@@ -282,6 +283,44 @@ func compileNamedQuery(qs []byte, bindType int) (query string, names []string, e
 	}
 
 	return string(rebound), names, err
+}
+
+// namedQueryKey is the cache key for compiled named queries.
+type namedQueryKey struct {
+	bindType int
+	query    string
+}
+
+type namedQuery struct {
+	query string
+	names []string
+}
+
+// namedQueryCache caches compiled named queries to avoid repeatedly parsing
+// the same SQL templates on hot paths. It is safe for concurrent use.
+var namedQueryCache sync.Map
+
+// cachedCompileNamedQuery compiles a named query and caches the result keyed
+// by (bindType, query) so that repeated NamedExec/NamedQuery calls for the
+// same SQL avoid the cost of re-parsing the template.
+func cachedCompileNamedQuery(query string, bindType int) (string, []string, error) {
+	key := namedQueryKey{bindType: bindType, query: query}
+	if v, ok := namedQueryCache.Load(key); ok {
+		nq := v.(namedQuery)
+		return nq.query, nq.names, nil
+	}
+
+	bound, names, err := compileNamedQuery([]byte(query), bindType)
+	if err != nil {
+		return "", nil, err
+	}
+
+	// Store the compiled result for future calls. It's fine if multiple
+	// goroutines race to store the same value; the content is deterministic.
+	nq := namedQuery{query: bound, names: names}
+	namedQueryCache.Store(key, nq)
+
+	return bound, names, nil
 }
 
 // BindNamed binds a struct or a map to a query with named parameters.
