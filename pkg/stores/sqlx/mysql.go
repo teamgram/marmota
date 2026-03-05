@@ -48,7 +48,7 @@ type Config struct {
 func NewMySQL(c *Config) (db *DB) {
 	db, err := Open(c)
 	if err != nil {
-		logx.Error("open mysql error(%v)", err)
+		logx.Errorf("open mysql error(%v)", err)
 		panic(err)
 	}
 

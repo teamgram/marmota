@@ -67,12 +67,49 @@ func TestInUint64List(t *testing.T) {
 
 // InStringList()函数的测试函数
 func TestInStringList(t *testing.T) {
-	// 准备测试数据
-	elems := []string{"1", "2", "3", "4", "5"}
-	// 调用测试函数
-	result := InStringList(elems)
-	// 判断测试结果
-	if result != "'1','2','3','4','5'" {
-		t.Errorf("InStringList() = %s; expected '1','2','3','4','5'", result)
+	tests := []struct {
+		name     string
+		elems    []string
+		expected string
+	}{
+		{
+			name:     "normal",
+			elems:    []string{"1", "2", "3", "4", "5"},
+			expected: "'1','2','3','4','5'",
+		},
+		{
+			name:     "empty",
+			elems:    []string{},
+			expected: "",
+		},
+		{
+			name:     "single",
+			elems:    []string{"hello"},
+			expected: "'hello'",
+		},
+		{
+			name:     "single quote escape",
+			elems:    []string{"it's", "test"},
+			expected: "'it''s','test'",
+		},
+		{
+			name:     "sql injection attempt",
+			elems:    []string{"'; DROP TABLE users; --"},
+			expected: "'''; DROP TABLE users; --'",
+		},
+		{
+			name:     "multiple single quotes",
+			elems:    []string{"a''b", "c'd"},
+			expected: "'a''''b','c''d'",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := InStringList(tt.elems)
+			if result != tt.expected {
+				t.Errorf("InStringList(%v) = %s; expected %s", tt.elems, result, tt.expected)
+			}
+		})
 	}
 }

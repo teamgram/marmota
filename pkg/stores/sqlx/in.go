@@ -36,26 +36,27 @@ func InUint64List(elems []uint64) string {
 	return strings2.JoinUint64List(elems, ",")
 }
 
+// escapeSingleQuote escapes single quotes for safe SQL string literal embedding.
+func escapeSingleQuote(s string) string {
+	return strings.ReplaceAll(s, "'", "''")
+}
+
 func InStringList(elems []string) string {
 	switch len(elems) {
 	case 0:
 		return ""
 	case 1:
-		return "'" + elems[0] + "'"
-	}
-	n := 2 + 3*(len(elems)-1) // "','" between elements
-	for i := 0; i < len(elems); i++ {
-		n += len(elems[i])
+		escaped := escapeSingleQuote(elems[0])
+		return "'" + escaped + "'"
 	}
 
 	var b strings.Builder
-	b.Grow(n)
 	b.WriteString("'")
-	b.WriteString(elems[0])
+	b.WriteString(escapeSingleQuote(elems[0]))
 	b.WriteString("'")
 	for _, s := range elems[1:] {
 		b.WriteString(",'")
-		b.WriteString(s)
+		b.WriteString(escapeSingleQuote(s))
 		b.WriteString("'")
 	}
 	return b.String()
