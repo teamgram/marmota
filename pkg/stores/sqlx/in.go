@@ -41,6 +41,104 @@ func escapeSingleQuote(s string) string {
 	return strings.ReplaceAll(s, "'", "''")
 }
 
+// inBuckets defines fixed placeholder count tiers for IN clauses.
+// By rounding up to these sizes, the SQL text stays stable across different
+// list lengths, allowing MySQL to reuse prepared statement cache.
+var inBuckets = []int{1, 2, 4, 8, 16, 32, 64, 128, 256, 512}
+
+// nextBucket returns the smallest bucket size >= n.
+// Falls back to n itself for very large lists.
+func nextBucket(n int) int {
+	for _, b := range inBuckets {
+		if b >= n {
+			return b
+		}
+	}
+	return n
+}
+
+// placeholders returns a string of `n` comma-separated "?" markers, e.g. "?,?,?".
+func placeholders(n int) string {
+	if n <= 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.Grow(n*2 - 1)
+	b.WriteByte('?')
+	for i := 1; i < n; i++ {
+		b.WriteString(",?")
+	}
+	return b.String()
+}
+
+// BucketInt64List returns a bucketed placeholder string and padded args for use in
+// parameterized IN clauses. The placeholder count is rounded up to a fixed bucket
+// size so that MySQL can cache the prepared statement.
+//
+// Example:
+//
+//	ph, args := BucketInt64List([]int64{10, 20, 30})
+//	// ph   = "?,?,?,?"   (bucket=4)
+//	// args = [10, 20, 30, 30]  (padded with last element)
+//	query := fmt.Sprintf("SELECT * FROM t WHERE id IN (%s)", ph)
+//	db.Query(query, args...)
+func BucketInt64List(elems []int64) (string, []interface{}) {
+	if len(elems) == 0 {
+		return "", nil
+	}
+
+	bucket := nextBucket(len(elems))
+	args := make([]interface{}, bucket)
+	for i := 0; i < len(elems); i++ {
+		args[i] = elems[i]
+	}
+	// pad remaining slots with the last element (semantically neutral for IN)
+	last := elems[len(elems)-1]
+	for i := len(elems); i < bucket; i++ {
+		args[i] = last
+	}
+
+	return placeholders(bucket), args
+}
+
+// BucketInt32List is the int32 variant of BucketInt64List.
+func BucketInt32List(elems []int32) (string, []interface{}) {
+	if len(elems) == 0 {
+		return "", nil
+	}
+
+	bucket := nextBucket(len(elems))
+	args := make([]interface{}, bucket)
+	for i := 0; i < len(elems); i++ {
+		args[i] = elems[i]
+	}
+	last := elems[len(elems)-1]
+	for i := len(elems); i < bucket; i++ {
+		args[i] = last
+	}
+
+	return placeholders(bucket), args
+}
+
+// BucketStringList is the string variant of BucketInt64List.
+func BucketStringList(elems []string) (string, []interface{}) {
+	if len(elems) == 0 {
+		return "", nil
+	}
+
+	bucket := nextBucket(len(elems))
+	args := make([]interface{}, bucket)
+	for i := 0; i < len(elems); i++ {
+		args[i] = elems[i]
+	}
+	last := elems[len(elems)-1]
+	for i := len(elems); i < bucket; i++ {
+		args[i] = last
+	}
+
+	return placeholders(bucket), args
+}
+
 func InStringList(elems []string) string {
 	switch len(elems) {
 	case 0:
