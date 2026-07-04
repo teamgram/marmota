@@ -17,7 +17,6 @@ package kafka
 import (
 	"container/list"
 	"context"
-	"errors"
 	"hash/fnv"
 	"sync"
 	"time"
@@ -36,19 +35,19 @@ func MustShardingConsumerGroup(c *KafkaShardingConsumerConf) *ShardingConsumerGr
 		panic(err)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
 	cg := &ShardingConsumerGroup{
 		ConsumerGroup: consumerGroup,
 		c:             c,
 		chMessage:     make([]chan *CMessage, c.Concurrency),
+		state:         newConnState(),
+		ctx:           ctx,
+		cancel:        cancel,
 	}
 	for i := 0; i < len(cg.chMessage); i++ {
 		cg.chMessage[i] = make(chan *CMessage, c.QueueBuffer)
 		go cg.Run(i)
 	}
-	//for i := 0; i < ChannelNum; i++ {
-	//	cg.chArrays[i] = make(chan Cmd2Value, 50)
-	//	go cg.Run(i)
-	//}
 
 	return cg
 }
@@ -61,30 +60,25 @@ type CMessage struct {
 // ShardingConsumerGroup represents a Sarama consumer GroupName consumer
 type ShardingConsumerGroup struct {
 	sarama.ConsumerGroup
-	c         *KafkaShardingConsumerConf
-	chMessage []chan *CMessage
-	cb        MessageHandlerF
+	c          *KafkaShardingConsumerConf
+	chMessage  []chan *CMessage
+	cb         MessageHandlerF
+	state      *ConnState
+	ctx        context.Context
+	cancel     context.CancelFunc
+	cancelOnce sync.Once
 }
 
 func (c *ShardingConsumerGroup) RegisterHandler(cb MessageHandlerF) {
 	c.cb = cb
 }
 
-// Start start consume messages, watch signals
+// Start start consume messages, watch signals.
+//
+// See ConsumerGroup.Start in consumer_group.go for why this backs off
+// from 1s up to 10s instead of hot-looping while Kafka is unreachable.
 func (c *ShardingConsumerGroup) Start() {
-	ctx := context.Background()
-	for {
-		err := c.ConsumerGroup.Consume(ctx, c.Topics(), c)
-		if err != nil {
-			logx.WithContext(ctx).Error("consume err", err, "topic", c.Topics(), "groupID", c.Group())
-			if errors.Is(err, sarama.ErrClosedConsumerGroup) {
-				return
-			}
-			if errors.Is(err, context.Canceled) {
-				return
-			}
-		}
-	}
+	runConsumerLoop(c.ctx, c.ConsumerGroup, c.Topics(), c.Group(), c, c.state)
 }
 
 func (c *ShardingConsumerGroup) Run(channelID int) {
@@ -99,8 +93,12 @@ func (c *ShardingConsumerGroup) Run(channelID int) {
 	}
 }
 
-// Stop Stop consume messages, watch signals
+// Stop stops consuming messages and releases the underlying consumer group.
 func (c *ShardingConsumerGroup) Stop() {
+	c.cancelOnce.Do(func() {
+		c.cancel()
+		_ = c.ConsumerGroup.Close()
+	})
 }
 
 func (c *ShardingConsumerGroup) Topics() []string {
@@ -111,10 +109,23 @@ func (c *ShardingConsumerGroup) Group() string {
 	return c.c.Group
 }
 
+// IsHealthy reports whether the consumer group currently holds a live
+// session with the broker coordinator.
+func (c *ShardingConsumerGroup) IsHealthy() bool {
+	return c.state.IsHealthy()
+}
+
+// State returns a point-in-time snapshot of the connection state, useful
+// for a /healthz endpoint or metrics.
+func (c *ShardingConsumerGroup) State() ConnSnapshot {
+	return c.state.Snapshot()
+}
+
 // Setup is run at the beginning of a new session, before ConsumeClaim
 func (c *ShardingConsumerGroup) Setup(sarama.ConsumerGroupSession) error {
-	// Mark the consumer as ready
-	// close(c.ready)
+	// A session was successfully (re)established with the group
+	// coordinator, i.e. we are connected.
+	c.state.markUp()
 	return nil
 }
 

@@ -23,11 +23,10 @@ package kafka
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/IBM/sarama"
-	"github.com/zeromicro/go-zero/core/logx"
 	ztrace "github.com/zeromicro/go-zero/core/trace"
 	"go.opentelemetry.io/otel/codes"
 	gcodes "google.golang.org/grpc/codes"
@@ -39,10 +38,12 @@ type MessageHandlerF func(ctx context.Context, method, key string, value []byte)
 // ConsumerGroup kafka consumer
 type ConsumerGroup struct {
 	sarama.ConsumerGroup
-	c  *KafkaConsumerConf
-	cb map[string]MessageHandlerF
-	//ctx    context.Context
-	//cancel context.Context
+	c          *KafkaConsumerConf
+	cb         map[string]MessageHandlerF
+	state      *ConnState
+	ctx        context.Context
+	cancel     context.CancelFunc
+	cancelOnce sync.Once
 }
 
 func MustKafkaConsumer(c *KafkaConsumerConf) *ConsumerGroup {
@@ -55,10 +56,14 @@ func MustKafkaConsumer(c *KafkaConsumerConf) *ConsumerGroup {
 		panic(err)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
 	cg := &ConsumerGroup{
 		ConsumerGroup: consumerGroup,
 		c:             c,
 		cb:            map[string]MessageHandlerF{},
+		state:         newConnState(),
+		ctx:           ctx,
+		cancel:        cancel,
 	}
 
 	return cg
@@ -72,9 +77,23 @@ func (c *ConsumerGroup) Group() string {
 	return c.c.Group
 }
 
+// IsHealthy reports whether the consumer group currently holds a live
+// session with the broker coordinator.
+func (c *ConsumerGroup) IsHealthy() bool {
+	return c.state.IsHealthy()
+}
+
+// State returns a point-in-time snapshot of the connection state, useful
+// for a /healthz endpoint or metrics.
+func (c *ConsumerGroup) State() ConnSnapshot {
+	return c.state.Snapshot()
+}
+
 // Setup is run at the beginning of a new session, before ConsumeClaim
 func (c *ConsumerGroup) Setup(sarama.ConsumerGroupSession) error {
-	// Mark the consumer as ready
+	// A session was successfully (re)established with the group
+	// coordinator, i.e. we are connected.
+	c.state.markUp()
 	return nil
 }
 
@@ -128,23 +147,21 @@ func (c *ConsumerGroup) RegisterHandlers(topic string, cb MessageHandlerF) {
 	c.cb[topic] = cb
 }
 
-// Start start consume messages, watch signals
+// Start start consume messages, watch signals.
+//
+// Failed attempts (Kafka unreachable, broker timeout, etc.) back off from
+// 1s up to 10s instead of spinning the CPU, and every attempt updates the
+// shared ConnState so IsHealthy()/State() reflect current reachability.
+// This is what lets the consumer notice Kafka came back on its own,
+// without needing a new message or a service restart to kick it.
 func (c *ConsumerGroup) Start() {
-	ctx := context.Background()
-	for {
-		err := c.ConsumerGroup.Consume(ctx, c.Topics(), c)
-		if err != nil {
-			logx.WithContext(ctx).Error("consume err", err, "topic", c.Topics(), "groupID", c.Group())
-			if errors.Is(err, sarama.ErrClosedConsumerGroup) {
-				return
-			}
-			if errors.Is(err, context.Canceled) {
-				return
-			}
-		}
-	}
+	runConsumerLoop(c.ctx, c.ConsumerGroup, c.Topics(), c.Group(), c, c.state)
 }
 
-// Stop Stop consume messages, watch signals
+// Stop stops consuming messages and releases the underlying consumer group.
 func (c *ConsumerGroup) Stop() {
+	c.cancelOnce.Do(func() {
+		c.cancel()
+		_ = c.ConsumerGroup.Close()
+	})
 }

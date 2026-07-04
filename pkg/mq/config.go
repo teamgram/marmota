@@ -17,8 +17,10 @@ package kafka
 import (
 	"bytes"
 	"strings"
+	"time"
 
 	"github.com/teamgram/marmota/pkg/error2"
+	"github.com/zeromicro/go-zero/core/logx"
 
 	"github.com/IBM/sarama"
 )
@@ -69,12 +71,27 @@ type KafkaShardingConsumerConf struct {
 	ClientId    string `json:",default=sarama"`
 }
 
+// applyNetTimeouts bounds how long a single dial/read/write can block, and
+// how often sarama's own background refresher re-checks cluster metadata.
+// Sarama's defaults (30s dial/read/write timeouts, 10-minute metadata
+// refresh) are far too slow for noticing a broker coming back; this is a
+// fallback safety net behind the active 1-10s health-check loop in
+// health.go, in case that loop is ever disabled.
+func applyNetTimeouts(kfk *sarama.Config) {
+	kfk.Net.DialTimeout = 5 * time.Second
+	kfk.Net.ReadTimeout = 10 * time.Second
+	kfk.Net.WriteTimeout = 10 * time.Second
+
+	kfk.Metadata.RefreshFrequency = 60 * time.Second
+}
+
 func BuildConsumerGroupConfig(conf *KafkaConsumerConf, initial int64, autoCommitEnable bool) (*sarama.Config, error) {
 	kfk := sarama.NewConfig()
 	kfk.Version = sarama.V2_0_0_0
 	kfk.Consumer.Offsets.Initial = initial
 	kfk.Consumer.Offsets.AutoCommit.Enable = autoCommitEnable
 	kfk.Consumer.Return.Errors = false
+	applyNetTimeouts(kfk)
 	if conf.Username != "" || conf.Password != "" {
 		kfk.Net.SASL.Enable = true
 		kfk.Net.SASL.User = conf.Username
@@ -104,6 +121,9 @@ func BuildProducerConfig(conf KafkaProducerConf) (*sarama.Config, error) {
 	kfk.Producer.Return.Successes = true
 	kfk.Producer.Return.Errors = true
 	kfk.Producer.Partitioner = sarama.NewHashPartitioner
+	applyNetTimeouts(kfk)
+	kfk.Producer.Retry.Max = 5
+	kfk.Producer.Retry.Backoff = 500 * time.Millisecond
 	if conf.Username != "" || conf.Password != "" {
 		kfk.Net.SASL.Enable = true
 		kfk.Net.SASL.User = conf.Username
@@ -119,6 +139,15 @@ func BuildProducerConfig(conf KafkaProducerConf) (*sarama.Config, error) {
 	default:
 		kfk.Producer.RequiredAcks = sarama.WaitForAll
 	}
+
+	// Requires RequiredAcks == WaitForAll and a single in-flight request
+	if kfk.Producer.RequiredAcks != sarama.WaitForAll {
+		logx.Errorf("kafka producer: ProducerAck=%q is incompatible with the idempotent producer (requires wait_for_all); forcing wait_for_all to prevent duplicate messages on retry", conf.ProducerAck)
+		kfk.Producer.RequiredAcks = sarama.WaitForAll
+	}
+	kfk.Producer.Idempotent = true
+	kfk.Net.MaxOpenRequests = 1
+
 	if conf.CompressType == "" {
 		kfk.Producer.Compression = sarama.CompressionNone
 	} else {
